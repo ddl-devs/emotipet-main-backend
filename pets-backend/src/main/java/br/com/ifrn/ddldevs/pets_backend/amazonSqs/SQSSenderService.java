@@ -4,12 +4,7 @@ import br.com.ifrn.ddldevs.pets_backend.exception.BusinessException;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.awspring.cloud.sqs.operations.SqsTemplate;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
-import software.amazon.awssdk.services.sqs.model.SendMessageRequest;
-
-import java.util.UUID;
 
 @Service
 public class SQSSenderService {

@@ -35,10 +35,10 @@ public class UserService {
 
     @Transactional
     public UserResponseDTO createUser(UserRequestDTO dto) {
-        KcUserResponseDTO keycloakUser = keycloakServiceImpl.createUser(dto);
+//        KcUserResponseDTO keycloakUser = keycloakServiceImpl.createUser(dto);
 
         User user = userMapper.toEntity(dto);
-        user.setKeycloakId(keycloakUser.id());
+        user.setKeycloakId("123");
 
         userRepository.save(user);
         return userMapper.toResponseDTO(user);

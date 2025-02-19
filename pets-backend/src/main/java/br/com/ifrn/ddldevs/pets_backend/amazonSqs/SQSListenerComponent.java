@@ -28,5 +28,6 @@ public class SQSListenerComponent {
             petAnalysis.setResult(message.getResult());
             petAnalysis.setAnalysisStatus(AnalysisStatus.FAILURE);
         }
+        petAnalysisRepository.save(petAnalysis);
     }
 }
