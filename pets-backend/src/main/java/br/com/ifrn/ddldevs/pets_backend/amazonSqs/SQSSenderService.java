@@ -28,7 +28,6 @@ public class SQSSenderService {
     public void sendMessage(AnalysisMessage message) {
         try{
             String body = objectMapper.writeValueAsString(message);
-            String uuid = UUID.randomUUID().toString();
 
             sqsTemplate.send(this.queueUrl, body);
         }catch (JsonProcessingException e) {

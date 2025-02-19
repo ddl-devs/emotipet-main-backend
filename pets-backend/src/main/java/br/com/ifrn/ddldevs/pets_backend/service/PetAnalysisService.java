@@ -46,19 +46,19 @@ public class PetAnalysisService {
         }
 
         PetAnalysis petAnalysis = petAnalysisMapper.toEntity(petAnalysisRequestDTO);
-//        Pet pet = petRepository.findById(petAnalysisRequestDTO.getPetId())
-//                .orElseThrow(() -> new RuntimeException("Pet not found"));
-//
-//        petAnalysis.setPet(pet);
-//        pet.getPetAnalysis().add(petAnalysis);
-//
-//        petAnalysisRepository.save(petAnalysis);
-//        petRepository.save(pet);
+        Pet pet = petRepository.findById(petAnalysisRequestDTO.getPetId())
+                .orElseThrow(() -> new RuntimeException("Pet not found"));
+
+        petAnalysis.setPet(pet);
+        pet.getPetAnalysis().add(petAnalysis);
+
+        petAnalysisRepository.save(petAnalysis);
+        petRepository.save(pet);
 
         AnalysisMessage message = new AnalysisMessage(
-                petAnalysisRequestDTO.getPetId(),
-                petAnalysisRequestDTO.getPicture(),
-                petAnalysisRequestDTO.getAnalysisType()
+                petAnalysis.getId(),
+                petAnalysis.getPicture(),
+                petAnalysis.getAnalysisType()
         );
         senderService.sendMessage(message);
 

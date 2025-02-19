@@ -5,8 +5,8 @@ import lombok.Data;
 
 @Data
 @AllArgsConstructor
-public class ResponseMessage {
-    private Long petID;
+public class AnalysisResponseMessage {
+    private Long analysisId;
     private String result;
     private String status;
 }

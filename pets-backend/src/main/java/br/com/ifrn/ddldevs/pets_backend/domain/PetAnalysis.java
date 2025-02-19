@@ -1,5 +1,7 @@
 package br.com.ifrn.ddldevs.pets_backend.domain;
 
+import br.com.ifrn.ddldevs.pets_backend.domain.Enums.AnalysisStatus;
+import br.com.ifrn.ddldevs.pets_backend.domain.Enums.AnalysisType;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -21,7 +23,10 @@ public class PetAnalysis extends BaseEntity{
     @Column(nullable = false, length = 64)
     private String result;
 
-    @Column(nullable = false, length = 64, name = "analysis_type")
-    private String analysisType;
+    @Enumerated(EnumType.STRING)
+    private AnalysisType analysisType;
+
+    @Enumerated(EnumType.STRING)
+    private AnalysisStatus analysisStatus = AnalysisStatus.IN_ANALYSIS;
 }
 
