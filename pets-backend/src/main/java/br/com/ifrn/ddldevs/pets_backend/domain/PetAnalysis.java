@@ -24,3 +24,4 @@ public class PetAnalysis extends BaseEntity{
     @Column(nullable = false, length = 64, name = "analysis_type")
     private String analysisType;
 }
+

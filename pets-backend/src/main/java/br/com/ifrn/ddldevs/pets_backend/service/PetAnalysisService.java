@@ -1,6 +1,8 @@
 package br.com.ifrn.ddldevs.pets_backend.service;
 
 
+import br.com.ifrn.ddldevs.pets_backend.amazonSqs.AnalysisMessage;
+import br.com.ifrn.ddldevs.pets_backend.amazonSqs.SQSSenderService;
 import br.com.ifrn.ddldevs.pets_backend.domain.Pet;
 import br.com.ifrn.ddldevs.pets_backend.domain.PetAnalysis;
 import br.com.ifrn.ddldevs.pets_backend.dto.PetAnalysis.PetAnalysisRequestDTO;
@@ -22,6 +24,9 @@ import java.util.List;
 public class PetAnalysisService {
 
     @Autowired
+    private SQSSenderService senderService;
+
+    @Autowired
     private PetAnalysisRepository petAnalysisRepository;
 
     @Autowired
@@ -41,14 +46,21 @@ public class PetAnalysisService {
         }
 
         PetAnalysis petAnalysis = petAnalysisMapper.toEntity(petAnalysisRequestDTO);
-        Pet pet = petRepository.findById(petAnalysisRequestDTO.getPetId())
-                .orElseThrow(() -> new RuntimeException("Pet not found"));
+//        Pet pet = petRepository.findById(petAnalysisRequestDTO.getPetId())
+//                .orElseThrow(() -> new RuntimeException("Pet not found"));
+//
+//        petAnalysis.setPet(pet);
+//        pet.getPetAnalysis().add(petAnalysis);
+//
+//        petAnalysisRepository.save(petAnalysis);
+//        petRepository.save(pet);
 
-        petAnalysis.setPet(pet);
-        pet.getPetAnalysis().add(petAnalysis);
-
-        petAnalysisRepository.save(petAnalysis);
-        petRepository.save(pet);
+        AnalysisMessage message = new AnalysisMessage(
+                petAnalysisRequestDTO.getPetId(),
+                petAnalysisRequestDTO.getPicture(),
+                petAnalysisRequestDTO.getAnalysisType()
+        );
+        senderService.sendMessage(message);
 
         return petAnalysisMapper.toResponse(petAnalysis);
     }
