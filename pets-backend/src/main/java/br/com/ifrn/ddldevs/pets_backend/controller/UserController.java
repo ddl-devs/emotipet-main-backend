@@ -88,9 +88,10 @@ public class UserController {
     }
 
     @Operation(summary = "Get all pets of a user")
-    @GetMapping("/{id}/pets")
-    @PreAuthorize("hasAuthority('ROLE_admin')")
-    public ResponseEntity<List<PetResponseDTO>> getPets(@PathVariable Long id) {
-        return ResponseEntity.ok(userService.getPets(id));
+    @GetMapping("/pets")
+    public ResponseEntity<List<PetResponseDTO>> getPets(
+            @AuthenticationPrincipal AuthUserDetails userDetails
+    ) {
+        return ResponseEntity.ok(userService.getPets(userDetails.getKeycloakId()));
     }
 }

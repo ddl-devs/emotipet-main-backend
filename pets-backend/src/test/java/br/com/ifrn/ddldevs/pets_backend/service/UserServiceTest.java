@@ -348,7 +348,7 @@ public class UserServiceTest {
         when(userRepository.existsById(1L)).thenReturn(false);
 
         assertThrows(NotFoundException.class,
-            () -> userService.getPets(-1L),
+            () -> userService.getPets("123"),
             "Usuário não encontrado");
     }
 
@@ -416,7 +416,7 @@ public class UserServiceTest {
         petResponses.add(petResponse2);
 
         when(petMapper.toDTOList(user.getPets())).thenReturn(petResponses);
-        List<PetResponseDTO> response = userService.getPets(1L);
+        List<PetResponseDTO> response = userService.getPets("123");
 
         verify(userRepository, times(1)).findById(1L);
         verify(petMapper, times(1)).toDTOList(user.getPets());

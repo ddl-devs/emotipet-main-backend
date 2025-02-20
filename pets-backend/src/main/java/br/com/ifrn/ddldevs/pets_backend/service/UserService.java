@@ -123,8 +123,8 @@ public class UserService {
         return petMapper.toDTOList(user.getPets());
     }
 
-    public List<PetResponseDTO> getPets(Long userId) {
-        User user = userRepository.findById(userId)
+    public List<PetResponseDTO> getPets(String userKcId) {
+        User user = userRepository.findByKeycloakId(userKcId)
             .orElseThrow(() -> new ResourceNotFoundException("Usuário não encontrado"));
 
         return petMapper.toDTOList(user.getPets());
