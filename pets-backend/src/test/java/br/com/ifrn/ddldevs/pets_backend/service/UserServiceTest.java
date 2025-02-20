@@ -1,19 +1,39 @@
 package br.com.ifrn.ddldevs.pets_backend.service;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.any;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
 import br.com.ifrn.ddldevs.pets_backend.domain.Enums.Species;
 import br.com.ifrn.ddldevs.pets_backend.domain.Pet;
 import br.com.ifrn.ddldevs.pets_backend.domain.User;
-import br.com.ifrn.ddldevs.pets_backend.dto.User.UserUpdateRequestDTO;
-import br.com.ifrn.ddldevs.pets_backend.dto.keycloak.KcUserResponseDTO;
 import br.com.ifrn.ddldevs.pets_backend.dto.Pet.PetResponseDTO;
 import br.com.ifrn.ddldevs.pets_backend.dto.User.UserRequestDTO;
 import br.com.ifrn.ddldevs.pets_backend.dto.User.UserResponseDTO;
+import br.com.ifrn.ddldevs.pets_backend.dto.User.UserUpdateRequestDTO;
+import br.com.ifrn.ddldevs.pets_backend.dto.keycloak.KcUserResponseDTO;
 import br.com.ifrn.ddldevs.pets_backend.keycloak.KeycloakServiceImpl;
 import br.com.ifrn.ddldevs.pets_backend.mapper.PetMapper;
 import br.com.ifrn.ddldevs.pets_backend.mapper.UserMapper;
 import br.com.ifrn.ddldevs.pets_backend.repository.UserRepository;
-import jakarta.validation.*;
+import jakarta.validation.ConstraintViolation;
+import jakarta.validation.Validation;
+import jakarta.validation.Validator;
+import jakarta.validation.ValidatorFactory;
 import jakarta.ws.rs.NotFoundException;
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
+import java.util.Set;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
@@ -22,16 +42,6 @@ import org.mockito.MockitoAnnotations;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.test.context.ActiveProfiles;
-
-import java.math.BigDecimal;
-import java.time.LocalDate;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
-import java.util.Set;
-
-import static org.mockito.Mockito.*;
-import static org.junit.jupiter.api.Assertions.*;
 
 @SpringBootTest
 @ActiveProfiles("test")
@@ -51,6 +61,8 @@ public class UserServiceTest {
 
     private Validator validator;
 
+    private final String loggedUserKeycloakId = "1abc23";
+
     @InjectMocks
     UserService userService;
 
@@ -67,14 +79,14 @@ public class UserServiceTest {
     @Test
     void shouldPassValidationForValidUserRequestDTO() {
         UserRequestDTO userRequestDTO = new UserRequestDTO(
-                "john", "john@email.com",
-                "John", "Doe",
-                LocalDate.of(1990, 1, 15),
-                "aws.12bs.bucket.com", "user!123"
+            "john", "john@email.com",
+            "John", "Doe",
+            LocalDate.of(1990, 1, 15),
+            "aws.12bs.bucket.com", "user!123"
         );
 
         Set<ConstraintViolation<UserRequestDTO>> violations =
-                validator.validate(userRequestDTO);
+            validator.validate(userRequestDTO);
 
         assertTrue(violations.isEmpty(), "Expected no validation errors");
     }
@@ -82,14 +94,14 @@ public class UserServiceTest {
     @Test
     void shouldFailValidationWhenFieldsAreNull() {
         UserRequestDTO userRequestDTO = new UserRequestDTO(
-                "john",
-                null, null, null,
-                LocalDate.of(1990, 1, 15),
-                "aws.12bs.bucket.com", null
+            "john",
+            null, null, null,
+            LocalDate.of(1990, 1, 15),
+            "aws.12bs.bucket.com", null
         );
 
         Set<ConstraintViolation<UserRequestDTO>> violations =
-                validator.validate(userRequestDTO);
+            validator.validate(userRequestDTO);
 
         assertFalse(violations.isEmpty(), "Expected validation errors");
         assertEquals(4, violations.size());
@@ -98,14 +110,14 @@ public class UserServiceTest {
     @Test
     void shouldFailValidationEmailInvalid() {
         UserRequestDTO userRequestDTO = new UserRequestDTO(
-                "john","john123email.com",
-                "John", "Doe",
-                LocalDate.of(1990, 1, 15),
-                "aws.12bs.bucket.com", "user!123"
+            "john", "john123email.com",
+            "John", "Doe",
+            LocalDate.of(1990, 1, 15),
+            "aws.12bs.bucket.com", "user!123"
         );
 
         Set<ConstraintViolation<UserRequestDTO>> violations =
-                validator.validate(userRequestDTO);
+            validator.validate(userRequestDTO);
 
         assertFalse(violations.isEmpty(), "Expected validation errors");
         assertEquals(1, violations.size(), "Expected exactly one validation error");
@@ -114,26 +126,26 @@ public class UserServiceTest {
     @Test
     void shouldFailWhenUsernameAndEmailExists() {
         User existingUser = new User("1ab23", "john",
-                "John", "Doe", "john@email.com",
-                LocalDate.of(1990, 1, 15),
-                "www.foto.url", new ArrayList<>());
+            "John", "Doe", "john@email.com",
+            LocalDate.of(1990, 1, 15),
+            "www.foto.url", new ArrayList<>());
 
         User duplicateUser = new User("1abc23", "john",
-                "John", "Doe", "john@email.com",
-                LocalDate.of(1990, 1, 15),
-                "www.foto.url", new ArrayList<>());
+            "John", "Doe", "john@email.com",
+            LocalDate.of(1990, 1, 15),
+            "www.foto.url", new ArrayList<>());
 
         when(userRepository.save(existingUser)).thenReturn(existingUser);
 
         userRepository.save(existingUser);
 
         when(userRepository.save(duplicateUser)).thenThrow(
-                DataIntegrityViolationException.class);
+            DataIntegrityViolationException.class);
 
         assertThrows(
-                DataIntegrityViolationException.class,
-                () -> userRepository.save(duplicateUser),
-                "Expected save to throw DataIntegrityViolationException, but it didn't"
+            DataIntegrityViolationException.class,
+            () -> userRepository.save(duplicateUser),
+            "Expected save to throw DataIntegrityViolationException, but it didn't"
         );
 
     }
@@ -141,18 +153,19 @@ public class UserServiceTest {
     @Test
     void shouldFailValidationWhenMinAgeIsFalse() {
         UserRequestDTO userRequestDTO = new UserRequestDTO(
-                "john",  "john@email.com",
-                "John", "Doe",
-                LocalDate.of(2015, 1, 15),
-                "aws.12bs.bucket.com", "user!123"
+            "john", "john@email.com",
+            "John", "Doe",
+            LocalDate.of(2015, 1, 15),
+            "aws.12bs.bucket.com", "user!123"
         );
 
         Set<ConstraintViolation<UserRequestDTO>> violations =
-                validator.validate(userRequestDTO);
+            validator.validate(userRequestDTO);
 
         assertFalse(violations.isEmpty(), "Expected validation errors");
         assertEquals(1, violations.size());
-        assertEquals("Usuário tem que ter pelo menos 13 anos", violations.iterator().next().getMessage());
+        assertEquals("Usuário tem que ter pelo menos 13 anos",
+            violations.iterator().next().getMessage());
     }
 
     // b
@@ -160,47 +173,54 @@ public class UserServiceTest {
     @Test
     void updateUserNullId() {
         UserUpdateRequestDTO userRequestDTO = new UserUpdateRequestDTO(
-                "john@email.com",
-                "John", "Doe",
-                LocalDate.of(1990, 1, 15),
-                "aws.12bs.bucket.com"
+            "john@email.com",
+            "John", "Doe",
+            LocalDate.of(1990, 1, 15),
+            "aws.12bs.bucket.com"
         );
 
         assertThrows(IllegalArgumentException.class,
-                () -> userService.updateUser(null, userRequestDTO),
-                "ID não pode ser nulo");
+            () -> userService.updateUser(null, userRequestDTO, loggedUserKeycloakId),
+            "ID não pode ser nulo");
     }
 
     @Test
     void updateUserInvalidId() {
         UserUpdateRequestDTO userRequestDTO = new UserUpdateRequestDTO(
-                "john@email.com",
-                "John", "Doe",
-                LocalDate.of(1990, 1, 15),
-                "aws.12bs.bucket.com"
+            "john@email.com",
+            "John", "Doe",
+            LocalDate.of(1990, 1, 15),
+            "aws.12bs.bucket.com"
         );
 
         assertThrows(IllegalArgumentException.class,
-                () -> userService.updateUser(-1L, userRequestDTO),
-                "ID não pode ser negativo");
+            () -> userService.updateUser(-1L, userRequestDTO, loggedUserKeycloakId),
+            "ID não pode ser negativo");
     }
 
     // c
 
     @Test
     void getUserByIdTrue() {
-        User user = new User("1abc23", "john", "John", "Doe", "john" +
-                "@email" +
-                ".com", LocalDate.of(1990, 1, 15), "www.foto.url",
-                new ArrayList<>());
+        User user = new User(
+            "1abc23",
+            "john",
+            "John",
+            "Doe",
+            "john@email.com",
+            LocalDate.of(1990, 1, 15),
+            "www.foto.url",
+            new ArrayList<>()
+        );
         when(userRepository.findById(any())).thenReturn(Optional.of(user));
 
-        UserResponseDTO userResponseDTO = new UserResponseDTO(user.getId(), user.getCreatedAt(), user.getUpdatedAt(),
-                user.getUsername(),
-                user.getKeycloakId(),
-                user.getEmail(),
-                user.getFirstName(), user.getLastName(),
-                user.getDateOfBirth(), user.getPhotoUrl());
+        UserResponseDTO userResponseDTO = new UserResponseDTO(user.getId(), user.getCreatedAt(),
+            user.getUpdatedAt(),
+            user.getUsername(),
+            user.getKeycloakId(),
+            user.getEmail(),
+            user.getFirstName(), user.getLastName(),
+            user.getDateOfBirth(), user.getPhotoUrl());
         when(userMapper.toResponseDTO(user)).thenReturn(userResponseDTO);
 
         UserResponseDTO userById = userService.getUserById(1L);
@@ -212,15 +232,15 @@ public class UserServiceTest {
     @Test
     void getUserByIdNullId() {
         assertThrows(IllegalArgumentException.class,
-                () -> userService.getUserById(null),
-                "ID não pode ser nulo");
+            () -> userService.getUserById(null),
+            "ID não pode ser nulo");
     }
 
     @Test
     void getUserByIdFalseInvalidId() {
         assertThrows(IllegalArgumentException.class,
-                () -> userService.getUserById(-1L),
-                "ID não pode ser negativo");
+            () -> userService.getUserById(-1L),
+            "ID não pode ser negativo");
     }
 
     // d
@@ -228,13 +248,13 @@ public class UserServiceTest {
     @Test
     void deleteUserTrue() {
         User existingUser = new User("1abc23", "john",
-                "John", "Doe", "john@email.com",
-                LocalDate.of(1990, 1, 15),
-                "www.foto.url", new ArrayList<>());
+            "John", "Doe", "john@email.com",
+            LocalDate.of(1990, 1, 15),
+            "www.foto.url", new ArrayList<>());
 
         when(userRepository.findById(1L)).thenReturn(Optional.of(existingUser));
 
-        userService.deleteUser(1L);
+        userService.deleteUser(1L, loggedUserKeycloakId);
 
         verify(userRepository, times(1)).findById(1L);
         verify(userRepository, times(1)).deleteById(1L);
@@ -243,55 +263,60 @@ public class UserServiceTest {
     @Test
     void deleteUserWithIdNull() {
         assertThrows(IllegalArgumentException.class,
-                () -> userService.deleteUser(null),
-                "ID não pode ser nulo");
+            () -> userService.deleteUser(null, loggedUserKeycloakId),
+            "ID não pode ser nulo");
     }
 
     @Test
     void deleteUserWithInvalidId() {
         assertThrows(IllegalArgumentException.class,
-                () -> userService.deleteUser(-1L),
-                "ID não pode ser negativo");
+            () -> userService.deleteUser(-1L, loggedUserKeycloakId),
+            "ID não pode ser negativo");
     }
     // Structure Tests
 
     @Test
-    void succesfullyCreateUser(){
+    void succesfullyCreateUser() {
 
-        User user = new User("1abc23", "john", "John", "Doe", "john" +
-                "@email" +
-                ".com", LocalDate.of(1990, 1, 15), "www.foto.url",
-                new ArrayList<>());
+        User user = new User(
+            "1abc23",
+            "john",
+            "John",
+            "Doe",
+            "john@email.com",
+            LocalDate.of(1990, 1, 15),
+            "www.foto.url",
+            new ArrayList<>());
 
         UserRequestDTO userRequestDTO = new UserRequestDTO(
-                user.getUsername(),
-                user.getEmail(),
-                user.getFirstName(),
-                user.getLastName(),
-                user.getDateOfBirth(),
-                user.getPhotoUrl(),
-                "abc123"
+            user.getUsername(),
+            user.getEmail(),
+            user.getFirstName(),
+            user.getLastName(),
+            user.getDateOfBirth(),
+            user.getPhotoUrl(),
+            "abc123"
         );
 
         UserResponseDTO userDto = new UserResponseDTO(
-                user.getId(),
-                user.getCreatedAt(),
-                user.getUpdatedAt(),
-                user.getUsername(),
-                user.getKeycloakId(),
-                user.getEmail(),
-                user.getFirstName(),
-                user.getLastName(),
-                user.getDateOfBirth(),
-                user.getPhotoUrl()
+            user.getId(),
+            user.getCreatedAt(),
+            user.getUpdatedAt(),
+            user.getUsername(),
+            user.getKeycloakId(),
+            user.getEmail(),
+            user.getFirstName(),
+            user.getLastName(),
+            user.getDateOfBirth(),
+            user.getPhotoUrl()
         );
 
         KcUserResponseDTO kcUserResponseDTO = new KcUserResponseDTO(
-                user.getKeycloakId(),
-                user.getUsername(),
-                user.getEmail(),
-                user.getFirstName(),
-                user.getLastName()
+            user.getKeycloakId(),
+            user.getUsername(),
+            user.getEmail(),
+            user.getFirstName(),
+            user.getLastName()
         );
 
         when(userMapper.toEntity(userRequestDTO)).thenReturn(user);
@@ -323,16 +348,21 @@ public class UserServiceTest {
         when(userRepository.existsById(1L)).thenReturn(false);
 
         assertThrows(NotFoundException.class,
-                () -> userService.getPets(-1L),
-                "Usuário não encontrado");
+            () -> userService.getPets("123"),
+            "Usuário não encontrado");
     }
 
     @Test
-    void succesfullyGetPets(){
-        User user = new User("1abc23", "john", "John", "Doe", "john" +
-                "@email" +
-                ".com", LocalDate.of(1990, 1, 15), "www.foto.url",
-                new ArrayList<>());
+    void succesfullyGetPets() {
+        User user = new User(
+            "1abc23",
+            "john",
+            "John",
+            "Doe",
+            "john@email.com",
+            LocalDate.of(1990, 1, 15), "www.foto.url",
+            new ArrayList<>()
+        );
 
         Pet pet = new Pet();
         pet.setId(1L);
@@ -348,38 +378,37 @@ public class UserServiceTest {
         pet.setHeight(20);
         pet.setWeight(BigDecimal.valueOf(5.0));
 
-
         user.getPets().add(pet);
         user.getPets().add(pet2);
 
         when(userRepository.findById(any())).thenReturn(Optional.of(user));
 
         PetResponseDTO petResponse1 = new PetResponseDTO(
-                pet.getId(),
-                pet.getCreatedAt(),
-                pet.getUpdatedAt(),
-                pet.getName(),
-                pet.getGender(),
-                pet.getAge(),
-                pet.getWeight(),
-                pet.getBreed(),
-                pet.getSpecies(),
-                pet.getHeight(),
-                pet.getPhotoUrl()
+            pet.getId(),
+            pet.getCreatedAt(),
+            pet.getUpdatedAt(),
+            pet.getName(),
+            pet.getGender(),
+            pet.getAge(),
+            pet.getWeight(),
+            pet.getBreed(),
+            pet.getSpecies(),
+            pet.getHeight(),
+            pet.getPhotoUrl()
         );
 
         PetResponseDTO petResponse2 = new PetResponseDTO(
-                pet2.getId(),
-                pet2.getCreatedAt(),
-                pet2.getUpdatedAt(),
-                pet2.getName(),
-                pet2.getGender(),
-                pet2.getAge(),
-                pet2.getWeight(),
-                pet2.getBreed(),
-                pet2.getSpecies(),
-                pet2.getHeight(),
-                pet2.getPhotoUrl()
+            pet2.getId(),
+            pet2.getCreatedAt(),
+            pet2.getUpdatedAt(),
+            pet2.getName(),
+            pet2.getGender(),
+            pet2.getAge(),
+            pet2.getWeight(),
+            pet2.getBreed(),
+            pet2.getSpecies(),
+            pet2.getHeight(),
+            pet2.getPhotoUrl()
         );
 
         List<PetResponseDTO> petResponses = new ArrayList<>();
@@ -387,11 +416,10 @@ public class UserServiceTest {
         petResponses.add(petResponse2);
 
         when(petMapper.toDTOList(user.getPets())).thenReturn(petResponses);
-        List<PetResponseDTO> response = userService.getPets(1L);
+        List<PetResponseDTO> response = userService.getPets("123");
 
         verify(userRepository, times(1)).findById(1L);
         verify(petMapper, times(1)).toDTOList(user.getPets());
-
 
         assertEquals(petResponses.getFirst().id(), response.getFirst().id());
         assertEquals(petResponses.getFirst().name(), response.getFirst().name());
@@ -411,48 +439,49 @@ public class UserServiceTest {
     void succesfullyUpdateUser() {
         // Arrange: Configuração do Usuário e DTOs
         User user = new User(
-                "1abc23",
-                "john",
-                "John",
-                "Doe",
-                "john@email.com",
-                LocalDate.of(1990, 1, 15),
-                "www.foto.url",
-                new ArrayList<>()
+            "1abc23",
+            "john",
+            "John",
+            "Doe",
+            "john@email.com",
+            LocalDate.of(1990, 1, 15),
+            "www.foto.url",
+            new ArrayList<>()
         );
 
         UserUpdateRequestDTO userRequestDTO = new UserUpdateRequestDTO(
-                user.getEmail(),
-                "jhon updated",
-                "doe updated",
-                user.getDateOfBirth(),
-                "www.newphoto.url"
+            user.getEmail(),
+            "jhon updated",
+            "doe updated",
+            user.getDateOfBirth(),
+            "www.newphoto.url"
         );
 
         KcUserResponseDTO kcUserResponseDTO = new KcUserResponseDTO(
-                user.getKeycloakId(),
-                user.getUsername(),
-                userRequestDTO.email(),
-                userRequestDTO.firstName(),
-                userRequestDTO.lastName()
+            user.getKeycloakId(),
+            user.getUsername(),
+            userRequestDTO.email(),
+            userRequestDTO.firstName(),
+            userRequestDTO.lastName()
         );
 
         UserResponseDTO userResponseDTO = new UserResponseDTO(
-                user.getId(),
-                user.getCreatedAt(),
-                user.getUpdatedAt(),
-                kcUserResponseDTO.username(),
-                kcUserResponseDTO.id(),
-                kcUserResponseDTO.email(),
-                kcUserResponseDTO.firstName(),
-                kcUserResponseDTO.lastName(),
-                userRequestDTO.dateOfBirth(),
-                userRequestDTO.photoUrl()
+            user.getId(),
+            user.getCreatedAt(),
+            user.getUpdatedAt(),
+            kcUserResponseDTO.username(),
+            kcUserResponseDTO.id(),
+            kcUserResponseDTO.email(),
+            kcUserResponseDTO.firstName(),
+            kcUserResponseDTO.lastName(),
+            userRequestDTO.dateOfBirth(),
+            userRequestDTO.photoUrl()
         );
 
         // Mock: Simulação dos Comportamentos
         when(userRepository.findById(1L)).thenReturn(Optional.of(user));
-        when(keycloakServiceImpl.updateUser(user.getKeycloakId(), userRequestDTO)).thenReturn(kcUserResponseDTO);
+        when(keycloakServiceImpl.updateUser(user.getKeycloakId(), userRequestDTO)).thenReturn(
+            kcUserResponseDTO);
         doAnswer(invocation -> {
             // Atualiza o usuário local com os dados retornados do Keycloak
             user.setUsername(kcUserResponseDTO.username());
@@ -467,12 +496,18 @@ public class UserServiceTest {
         when(userMapper.toResponseDTO(user)).thenReturn(userResponseDTO);
 
         // Act: Chamada do Método a Ser Testado
-        UserResponseDTO response = userService.updateUser(1L, userRequestDTO);
+        UserResponseDTO response = userService.updateUser(
+            1L,
+            userRequestDTO,
+            loggedUserKeycloakId
+        );
 
         // Assert: Verificação dos Resultados
         verify(userRepository, times(1)).findById(1L);
-        verify(keycloakServiceImpl, times(1)).updateUser(user.getKeycloakId(), userRequestDTO);
-        verify(userMapper, times(1)).updateEntityFromDTO(userRequestDTO, user);
+        verify(keycloakServiceImpl, times(1))
+            .updateUser(user.getKeycloakId(), userRequestDTO);
+        verify(userMapper, times(1)).
+            updateEntityFromDTO(userRequestDTO, user);
         verify(userRepository, times(1)).save(user);
         verify(userMapper, times(1)).toResponseDTO(user);
 
@@ -485,7 +520,6 @@ public class UserServiceTest {
         assertEquals(userResponseDTO.dateOfBirth(), response.dateOfBirth());
         assertEquals(userResponseDTO.photoUrl(), response.photoUrl());
     }
-
 
 
 }

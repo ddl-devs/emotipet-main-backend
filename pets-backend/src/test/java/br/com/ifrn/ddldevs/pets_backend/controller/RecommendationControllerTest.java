@@ -1,17 +1,28 @@
 package br.com.ifrn.ddldevs.pets_backend.controller;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+
 import br.com.ifrn.ddldevs.pets_backend.domain.Enums.Species;
 import br.com.ifrn.ddldevs.pets_backend.domain.Pet;
 import br.com.ifrn.ddldevs.pets_backend.domain.Recommendation;
 import br.com.ifrn.ddldevs.pets_backend.domain.User;
-import br.com.ifrn.ddldevs.pets_backend.dto.Recomendation.RecommendationRequestDTO;
-import br.com.ifrn.ddldevs.pets_backend.dto.Recomendation.RecommendationResponseDTO;
+import br.com.ifrn.ddldevs.pets_backend.dto.Recommendation.RecommendationRequestDTO;
 import br.com.ifrn.ddldevs.pets_backend.mapper.RecommendationMapper;
 import br.com.ifrn.ddldevs.pets_backend.repository.PetRepository;
 import br.com.ifrn.ddldevs.pets_backend.repository.RecommendationRepository;
 import br.com.ifrn.ddldevs.pets_backend.repository.UserRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.transaction.Transactional;
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -22,15 +33,6 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers;
-
-import java.math.BigDecimal;
-import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
-
-import static org.junit.jupiter.api.Assertions.*;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -90,17 +92,19 @@ class RecommendationControllerTest {
     @DisplayName("Should create an recommendation successfully")
     @Transactional
     public void createRecommendationSuccessfully() throws Exception {
-        RecommendationRequestDTO requestDTO = new RecommendationRequestDTO(this.pet.getId(), "Feed your pet twice daily", "Nutrition");
+        RecommendationRequestDTO requestDTO = new RecommendationRequestDTO(this.pet.getId(),
+            "Feed your pet twice daily", "Nutrition");
 
         String requestBody = objectMapper.writeValueAsString(requestDTO);
 
         mockMvc.perform(
-                post("/recommendations/")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(requestBody)
+            post("/recommendations/")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(requestBody)
         ).andExpect(MockMvcResultMatchers.status().isCreated());
 
-        Optional<Recommendation> savedRecommendation = recommendationRepository.findAll().stream().findFirst();
+        Optional<Recommendation> savedRecommendation = recommendationRepository.findAll().stream()
+            .findFirst();
         assertTrue(savedRecommendation.isPresent());
         assertEquals("Feed your pet twice daily", savedRecommendation.get().getRecommendation());
     }
@@ -118,10 +122,11 @@ class RecommendationControllerTest {
         recommendation = recommendationRepository.save(recommendation);
 
         mockMvc.perform(
-                delete("/recommendations/" + recommendation.getId())
+            delete("/recommendations/" + recommendation.getId())
         ).andExpect(MockMvcResultMatchers.status().isNoContent());
 
-        Optional<Recommendation> savedRecommendation = recommendationRepository.findById(recommendation.getId());
+        Optional<Recommendation> savedRecommendation = recommendationRepository.findById(
+            recommendation.getId());
         assertFalse(savedRecommendation.isPresent());
     }
 
@@ -136,12 +141,13 @@ class RecommendationControllerTest {
         recommendation.setCreatedAt(LocalDateTime.now());
         recommendation = recommendationRepository.save(recommendation);
 
-        String expectedResponse = objectMapper.writeValueAsString(recommendationMapper.toRecommendationResponseDTO(recommendation));
+        String expectedResponse = objectMapper.writeValueAsString(
+            recommendationMapper.toRecommendationResponseDTO(recommendation));
 
         mockMvc.perform(
                 get("/recommendations/" + recommendation.getId())
-        ).andExpect(MockMvcResultMatchers.status().isOk())
-                .andExpect(MockMvcResultMatchers.content().json(expectedResponse));
+            ).andExpect(MockMvcResultMatchers.status().isOk())
+            .andExpect(MockMvcResultMatchers.content().json(expectedResponse));
     }
 
     @Test
@@ -166,12 +172,13 @@ class RecommendationControllerTest {
         recommendationList.add(recommendation);
         recommendationList.add(recommendation2);
 
-        String expectedResponse = objectMapper.writeValueAsString(recommendationMapper.toDTOList(recommendationList));
+        String expectedResponse = objectMapper.writeValueAsString(
+            recommendationMapper.toDTOList(recommendationList));
 
         mockMvc.perform(
                 get("/recommendations/pet/" + this.pet.getId())
-        ).andExpect(MockMvcResultMatchers.status().isOk())
-                .andExpect(MockMvcResultMatchers.content().json(expectedResponse));
+            ).andExpect(MockMvcResultMatchers.status().isOk())
+            .andExpect(MockMvcResultMatchers.content().json(expectedResponse));
     }
 
     @Test
@@ -196,12 +203,13 @@ class RecommendationControllerTest {
         recommendationList.add(recommendation);
         recommendationList.add(recommendation2);
 
-        String expectedResponse = objectMapper.writeValueAsString(recommendationMapper.toDTOList(recommendationList));
+        String expectedResponse = objectMapper.writeValueAsString(
+            recommendationMapper.toDTOList(recommendationList));
 
         mockMvc.perform(
                 get("/recommendations/")
-        ).andExpect(MockMvcResultMatchers.status().isOk())
-                .andExpect(MockMvcResultMatchers.content().json(expectedResponse));
+            ).andExpect(MockMvcResultMatchers.status().isOk())
+            .andExpect(MockMvcResultMatchers.content().json(expectedResponse));
 
     }
 }

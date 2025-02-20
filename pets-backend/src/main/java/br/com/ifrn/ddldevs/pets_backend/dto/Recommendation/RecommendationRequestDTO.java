@@ -1,4 +1,4 @@
-package br.com.ifrn.ddldevs.pets_backend.dto.Recomendation;
+package br.com.ifrn.ddldevs.pets_backend.dto.Recommendation;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.Valid;
