@@ -23,6 +23,9 @@ public class PetAnalysis extends BaseEntity{
     @Column(nullable = false, length = 64)
     private String result;
 
+    @Column(nullable = true)
+    private Double accuracy;
+
     @Enumerated(EnumType.STRING)
     private AnalysisType analysisType;
 

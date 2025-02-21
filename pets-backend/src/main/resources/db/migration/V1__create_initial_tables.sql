@@ -32,6 +32,7 @@ CREATE TABLE pet_analisys (
     pet_id BIGINT NOT NULL,
     picture TEXT NOT NULL,
     result VARCHAR(32),
+    accuracy DOUBLE PRECISION,
     analysis_type VARCHAR(255) NOT NULL,
     analysis_status VARCHAR(255) NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

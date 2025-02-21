@@ -12,6 +12,7 @@ public record PetAnalysisResponseDTO(
         @Schema(description = "Date and time the Analysis was last updated", example = "2024-12-05T14:30:00Z") LocalDateTime updatedAt,
         @Schema(description = "Picture URL", example = "http://example.com/pet-analysis/picture.jpg") String picture,
         @Schema(description = "Result of the Analysis", example = "Healthy") String result,
+        @Schema(description = "Result of the Analysis", example = "93.212831") Double accuracy,
         @Schema(description = "Type of the Analysis", example = "Blood Test") AnalysisType analysisType,
         @Schema(description = "Status of the Analysis", example = "Blood Test") AnalysisStatus analysisStatus
 ) {}

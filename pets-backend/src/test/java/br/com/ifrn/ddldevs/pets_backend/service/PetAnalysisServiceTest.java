@@ -11,16 +11,11 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.*;
 
 import br.com.ifrn.ddldevs.pets_backend.domain.Enums.Species;
-import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import br.com.ifrn.ddldevs.pets_backend.domain.Enums.Species;
 import br.com.ifrn.ddldevs.pets_backend.domain.Pet;
 import br.com.ifrn.ddldevs.pets_backend.domain.PetAnalysis;
 import br.com.ifrn.ddldevs.pets_backend.domain.User;
@@ -87,7 +82,7 @@ class PetAnalysisServiceTest {
 
         PetAnalysisRequestDTO requestDTO = new PetAnalysisRequestDTO(1L, "http://example.com/picture.jpg", AnalysisType.DOG_BREED);
         PetAnalysis petAnalysis = new PetAnalysis();
-        PetAnalysisResponseDTO responseDTO = new PetAnalysisResponseDTO(1L, LocalDateTime.now(),  LocalDateTime.now(),"http://example.com/picture.jpg", "Healthy", AnalysisType.DOG_BREED, AnalysisStatus.COMPLETED);
+        PetAnalysisResponseDTO responseDTO = new PetAnalysisResponseDTO(1L, LocalDateTime.now(),  LocalDateTime.now(),"http://example.com/picture.jpg", "Healthy", 83.24,AnalysisType.DOG_BREED, AnalysisStatus.COMPLETED);
 
         AnalysisMessage analysisMessage = new AnalysisMessage(1L, "http", AnalysisType.DOG_BREED);
 
@@ -262,7 +257,7 @@ class PetAnalysisServiceTest {
 
         PetAnalysisResponseDTO responseDTO = new PetAnalysisResponseDTO(
                 1L, LocalDateTime.now(), LocalDateTime.now(), "http://example.com/picture.jpg",
-                "Healthy", AnalysisType.DOG_BREED, AnalysisStatus.COMPLETED);
+                "Healthy", 90.0,AnalysisType.DOG_BREED, AnalysisStatus.COMPLETED);
 
         when(petAnalysisRepository.findById(1L)).thenReturn(Optional.of(analyses));
         when(petAnalysisMapper.toResponse(analyses)).thenReturn(responseDTO);
