@@ -11,6 +11,16 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.*;
 
 import br.com.ifrn.ddldevs.pets_backend.domain.Enums.Species;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.Mockito.any;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+import br.com.ifrn.ddldevs.pets_backend.domain.Enums.Species;
 import br.com.ifrn.ddldevs.pets_backend.domain.Pet;
 import br.com.ifrn.ddldevs.pets_backend.domain.PetAnalysis;
 import br.com.ifrn.ddldevs.pets_backend.domain.User;
