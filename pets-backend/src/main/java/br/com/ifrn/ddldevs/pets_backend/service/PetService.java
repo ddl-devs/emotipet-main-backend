@@ -1,20 +1,20 @@
 package br.com.ifrn.ddldevs.pets_backend.service;
 
 import br.com.ifrn.ddldevs.pets_backend.domain.Pet;
-import br.com.ifrn.ddldevs.pets_backend.domain.User;
 import br.com.ifrn.ddldevs.pets_backend.dto.Pet.PetRequestDTO;
 import br.com.ifrn.ddldevs.pets_backend.dto.Pet.PetResponseDTO;
 import br.com.ifrn.ddldevs.pets_backend.dto.Pet.PetUpdateRequestDTO;
+import br.com.ifrn.ddldevs.pets_backend.exception.AccessDeniedException;
 import br.com.ifrn.ddldevs.pets_backend.exception.ResourceNotFoundException;
 import br.com.ifrn.ddldevs.pets_backend.mapper.PetMapper;
 import br.com.ifrn.ddldevs.pets_backend.repository.PetRepository;
 import br.com.ifrn.ddldevs.pets_backend.repository.UserRepository;
-import jakarta.ws.rs.NotFoundException;
+import java.util.List;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.util.List;
 
 @Service
 public class PetService {
@@ -29,10 +29,12 @@ public class PetService {
     private PetMapper petMapper;
 
     @Transactional
-    public PetResponseDTO createPet(PetRequestDTO petRequestDTO) {
+    public PetResponseDTO createPet(PetRequestDTO petRequestDTO, String loggedUserKeycloakId) {
         Pet pet = petMapper.toEntity(petRequestDTO);
-        User user = userRepository.findById(petRequestDTO.getUserId())
-                .orElseThrow(() -> new ResourceNotFoundException("Usuário não existe"));
+
+        var user = userRepository.findByKeycloakId(loggedUserKeycloakId).orElseThrow(() -> {
+            throw new ResourceNotFoundException("Usuário não encontrado!");
+        });
 
         pet.setUser(user);
         user.getPets().add(pet);
@@ -43,12 +45,13 @@ public class PetService {
         return petMapper.toPetResponseDTO(pet);
     }
 
-    public List<PetResponseDTO> listPets(){
+    public List<PetResponseDTO> listPets() {
         List<Pet> pets = petRepository.findAll();
         return petMapper.toDTOList(pets);
     }
 
-    public PetResponseDTO updatePet(Long id, PetUpdateRequestDTO petRequestDTO) {
+    public PetResponseDTO updatePet(Long id, PetUpdateRequestDTO petRequestDTO,
+        String loggedUserKeycloakId) {
         if (id == null) {
             throw new IllegalArgumentException("ID não pode ser nulo");
         }
@@ -57,7 +60,9 @@ public class PetService {
         }
 
         Pet pet = petRepository.findById(id)
-                .orElseThrow(() -> new NotFoundException("Pet não encontrado"));
+            .orElseThrow(() -> new ResourceNotFoundException("Pet não encontrado!"));
+
+        validatePetOwnershipOrAdmin(pet, loggedUserKeycloakId);
 
         petMapper.updateEntityFromDTO(petRequestDTO, pet);
         Pet petUpdated = petRepository.save(pet);
@@ -65,7 +70,7 @@ public class PetService {
         return petMapper.toPetResponseDTO(petUpdated);
     }
 
-    public PetResponseDTO getPet(Long id) {
+    public PetResponseDTO getPet(Long id, String loggedUserKeycloakId) {
         if (id == null) {
             throw new IllegalArgumentException("ID não pode ser nulo");
         }
@@ -74,23 +79,47 @@ public class PetService {
         }
 
         Pet pet = petRepository.findById(id)
-                .orElseThrow(() -> new NotFoundException("Pet não encontrado"));
+            .orElseThrow(() -> new ResourceNotFoundException("Pet não encontrado"));
+
+        validatePetOwnershipOrAdmin(pet, loggedUserKeycloakId);
 
         return petMapper.toPetResponseDTO(pet);
     }
 
-    public void deletePet(Long id) {
+    public void deletePet(Long id, String loggedUserKeycloakId) {
         if (id == null) {
             throw new IllegalArgumentException("ID não pode ser nulo");
         }
         if (id < 0) {
             throw new IllegalArgumentException("ID não pode ser negativo");
         }
-        if(!petRepository.existsById(id)) {
+        if (!petRepository.existsById(id)) {
             throw new ResourceNotFoundException("Pet não encontrado");
         }
 
+        Pet pet = petRepository.findById(id).orElseThrow(() -> {
+            throw new ResourceNotFoundException("Pet não encontrado!");
+        });
+
+        validatePetOwnershipOrAdmin(pet, loggedUserKeycloakId);
+
         petRepository.deleteById(id);
+    }
+
+    private void validatePetOwnershipOrAdmin(Pet pet, String loggedUserKeycloakId) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+
+        if (authentication.getAuthorities().stream()
+            .anyMatch(
+                grantedAuthority ->
+                    grantedAuthority.getAuthority().equals("ROLE_admin"))) {
+            return;
+        }
+
+        if (!pet.getUser().getKeycloakId().equals(loggedUserKeycloakId)) {
+            throw new AccessDeniedException(
+                "Você não pode acessar dados de pets de outros usuários!");
+        }
     }
 
 

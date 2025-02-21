@@ -1,5 +1,16 @@
 package br.com.ifrn.ddldevs.pets_backend.service;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
 import br.com.ifrn.ddldevs.pets_backend.domain.Enums.Species;
 import br.com.ifrn.ddldevs.pets_backend.domain.Pet;
 import br.com.ifrn.ddldevs.pets_backend.domain.User;
@@ -17,6 +28,11 @@ import jakarta.validation.Validation;
 import jakarta.validation.Validator;
 import jakarta.validation.ValidatorFactory;
 import jakarta.ws.rs.NotFoundException;
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.Optional;
+import java.util.Set;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
@@ -24,16 +40,6 @@ import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.*;
-
-
-import java.math.BigDecimal;
-import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.Optional;
-import java.util.Set;
 
 @SpringBootTest
 @ActiveProfiles("test")
@@ -53,6 +59,8 @@ class PetServiceTest {
 
     private Validator validator;
 
+    private final String loggedUserKeycloakId = "1abc23";
+
     public PetServiceTest() {
         ValidatorFactory factory = Validation.buildDefaultValidatorFactory();
         validator = factory.getValidator();
@@ -71,13 +79,12 @@ class PetServiceTest {
         user.setUsername("jhon");
         user.setFirstName("Jhon");
         user.setEmail("jhon@gmail.com");
-        user.setKeycloakId("345");
+        user.setKeycloakId(loggedUserKeycloakId);
         user.setPets(new ArrayList<>());
 
-        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+        when(userRepository.findByKeycloakId(loggedUserKeycloakId)).thenReturn(Optional.of(user));
 
         PetRequestDTO dto = new PetRequestDTO();
-        dto.setUserId(user.getId());
         dto.setName("Apolo");
         dto.setSpecies(Species.DOG);
         dto.setHeight(30);
@@ -92,24 +99,24 @@ class PetServiceTest {
         pet.setUser(user);
 
         PetResponseDTO petResponse = new PetResponseDTO(
-                pet.getId(),
-                pet.getCreatedAt(),
-                pet.getUpdatedAt(),
-                pet.getName(),
-                pet.getGender(),
-                pet.getAge(),
-                pet.getWeight(),
-                pet.getBreed(),
-                pet.getSpecies(),
-                pet.getHeight(),
-                pet.getPhotoUrl()
+            pet.getId(),
+            pet.getCreatedAt(),
+            pet.getUpdatedAt(),
+            pet.getName(),
+            pet.getGender(),
+            pet.getAge(),
+            pet.getWeight(),
+            pet.getBreed(),
+            pet.getSpecies(),
+            pet.getHeight(),
+            pet.getPhotoUrl()
         );
 
         when(petMapper.toEntity(dto)).thenReturn(pet);
         when(petRepository.save(any(Pet.class))).thenReturn(pet);
         when(petMapper.toPetResponseDTO(pet)).thenReturn(petResponse);
 
-        PetResponseDTO response = petService.createPet(dto);
+        PetResponseDTO response = petService.createPet(dto, loggedUserKeycloakId);
 
         assertNotNull(response);
         assertEquals("Apolo", response.name());
@@ -117,7 +124,7 @@ class PetServiceTest {
         assertEquals(30, response.height());
         assertEquals(BigDecimal.valueOf(10.0), response.weight());
 
-        verify(userRepository).findById(1L);
+        verify(userRepository).findByKeycloakId(loggedUserKeycloakId);
         verify(petMapper).toEntity(dto);
         verify(petRepository).save(any(Pet.class));
         verify(petMapper).toPetResponseDTO(pet);
@@ -131,56 +138,34 @@ class PetServiceTest {
         dto.setSpecies(Species.DOG);
         dto.setBreed("");
         dto.setHeight(0);
-        dto.setUserId(null);
 
         Set<ConstraintViolation<PetRequestDTO>> violations = validator.validate(dto);
         System.out.println(violations);
         assertFalse(violations.isEmpty());
-        assertEquals(5, violations.size());
+        assertEquals(4, violations.size());
     }
 
     @Test
     void createWithInvalidGenderType() {
         ObjectMapper objectMapper = new ObjectMapper();
         String invalidJson = """
-            {
-                "name": "Buddy",
-                "gender": "INVALID",
-                "weight": 10.0,
-                "species": "Dog",
-                "breed": "Golden Retriever",
-                "height": 50,
-                "userId": 1
-            }
-        """;
+                {
+                    "name": "Buddy",
+                    "gender": "INVALID",
+                    "weight": 10.0,
+                    "species": "Dog",
+                    "breed": "Golden Retriever",
+                    "height": 50,
+                    "userId": 1
+                }
+            """;
 
         InvalidFormatException exception = assertThrows(
-                InvalidFormatException.class,
-                () -> objectMapper.readValue(invalidJson, PetRequestDTO.class)
+            InvalidFormatException.class,
+            () -> objectMapper.readValue(invalidJson, PetRequestDTO.class)
         );
-        assertTrue(exception.getMessage().contains("not one of the values accepted for Enum class: [FEMALE, MALE]"));
-    }
-
-    @Test
-    void createPetNonExistentUser() {
-        PetRequestDTO dto = new PetRequestDTO();
-        dto.setName("Buddy");
-        dto.setWeight(BigDecimal.valueOf(10.0));
-        dto.setSpecies(Species.DOG);
-        dto.setBreed("Golden Retriever");
-        dto.setHeight(50);
-        dto.setUserId(999L);
-
-        when(userRepository.findById(dto.getUserId())).thenReturn(Optional.empty());
-
-        ResourceNotFoundException exception = assertThrows(
-                ResourceNotFoundException.class,
-                () -> petService.createPet(dto)
-        );
-
-        assertEquals("Usuário não existe", exception.getMessage());
-
-        verify(petRepository, never()).save(any(Pet.class));
+        assertTrue(exception.getMessage()
+            .contains("not one of the values accepted for Enum class: [FEMALE, MALE]"));
     }
 
     // b
@@ -189,12 +174,20 @@ class PetServiceTest {
     void updatePetSuccessful() {
         Long petId = 1L;
 
+        User user = new User();
+        user.setId(1L);
+        user.setUsername("jhon");
+        user.setFirstName("Jhon");
+        user.setEmail("jhon@gmail.com");
+        user.setKeycloakId(loggedUserKeycloakId);
+
         Pet existingPet = new Pet();
         existingPet.setId(petId);
         existingPet.setName("Buddy");
         existingPet.setSpecies(Species.CAT);
         existingPet.setHeight(20);
         existingPet.setWeight(BigDecimal.valueOf(5.0));
+        existingPet.setUser(user);
 
         PetUpdateRequestDTO updatedDTO = new PetUpdateRequestDTO();
         updatedDTO.setName("Apolo");
@@ -210,17 +203,17 @@ class PetServiceTest {
         updatedPet.setWeight(BigDecimal.valueOf(10.0));
 
         PetResponseDTO expectedResponse = new PetResponseDTO(
-                petId,
-                LocalDateTime.now(),
-                LocalDateTime.now(),
-                "Apolo",
-                null,
-                null,
-                BigDecimal.valueOf(10.0),
-                null,
-                Species.DOG,
-                30,
-                null
+            petId,
+            LocalDateTime.now(),
+            LocalDateTime.now(),
+            "Apolo",
+            null,
+            null,
+            BigDecimal.valueOf(10.0),
+            null,
+            Species.DOG,
+            30,
+            null
         );
 
         when(petRepository.findById(petId)).thenReturn(Optional.of(existingPet));
@@ -236,7 +229,7 @@ class PetServiceTest {
         when(petRepository.save(existingPet)).thenReturn(updatedPet);
         when(petMapper.toPetResponseDTO(updatedPet)).thenReturn(expectedResponse);
 
-        PetResponseDTO response = petService.updatePet(petId, updatedDTO);
+        PetResponseDTO response = petService.updatePet(petId, updatedDTO, loggedUserKeycloakId);
 
         assertNotNull(response);
         assertEquals(expectedResponse.id(), response.id());
@@ -260,8 +253,8 @@ class PetServiceTest {
         updatedPetDto.setWeight(BigDecimal.valueOf(10.0));
 
         assertThrows(IllegalArgumentException.class,
-                () -> petService.updatePet(null,updatedPetDto),
-                "ID não pode ser nulo");
+            () -> petService.updatePet(null, updatedPetDto, loggedUserKeycloakId),
+            "ID não pode ser nulo");
     }
 
     @Test
@@ -273,14 +266,21 @@ class PetServiceTest {
         updatedPetDto.setWeight(BigDecimal.valueOf(10.0));
 
         assertThrows(IllegalArgumentException.class,
-                () -> petService.updatePet(-1L,updatedPetDto),
-                "ID não pode ser nulo");
+            () -> petService.updatePet(-1L, updatedPetDto, loggedUserKeycloakId),
+            "ID não pode ser nulo");
     }
 
     // c
 
     @Test
     void getPetWithValidId() {
+        User user = new User();
+        user.setId(1L);
+        user.setUsername("jhon");
+        user.setFirstName("Jhon");
+        user.setEmail("jhon@gmail.com");
+        user.setKeycloakId(loggedUserKeycloakId);
+
         Long validId = 1L;
         Pet pet = new Pet();
         pet.setId(validId);
@@ -288,25 +288,26 @@ class PetServiceTest {
         pet.setSpecies(Species.DOG);
         pet.setHeight(30);
         pet.setWeight(BigDecimal.valueOf(10.0));
+        pet.setUser(user);
 
         PetResponseDTO petResponseDTO = new PetResponseDTO(
-                pet.getId(),
-                pet.getCreatedAt(),
-                pet.getUpdatedAt(),
-                pet.getName(),
-                pet.getGender(),
-                pet.getAge(),
-                pet.getWeight(),
-                pet.getBreed(),
-                pet.getSpecies(),
-                pet.getHeight(),
-                pet.getPhotoUrl()
+            pet.getId(),
+            pet.getCreatedAt(),
+            pet.getUpdatedAt(),
+            pet.getName(),
+            pet.getGender(),
+            pet.getAge(),
+            pet.getWeight(),
+            pet.getBreed(),
+            pet.getSpecies(),
+            pet.getHeight(),
+            pet.getPhotoUrl()
         );
 
         when(petRepository.findById(validId)).thenReturn(Optional.of(pet));
         when(petMapper.toPetResponseDTO(pet)).thenReturn(petResponseDTO);
 
-        PetResponseDTO response = petService.getPet(validId);
+        PetResponseDTO response = petService.getPet(validId, loggedUserKeycloakId);
 
         assertNotNull(response);
         assertEquals(validId, response.id());
@@ -319,15 +320,15 @@ class PetServiceTest {
     @Test
     void getPetByIdNullId() {
         assertThrows(IllegalArgumentException.class,
-                () -> petService.getPet(null),
-                "ID não pode ser nulo");
+            () -> petService.getPet(null, loggedUserKeycloakId),
+            "ID não pode ser nulo");
     }
 
     @Test
     void getPetByIdFalseInvalidId() {
         assertThrows(IllegalArgumentException.class,
-                () -> petService.getPet(-1L),
-                "ID não pode ser negativo");
+            () -> petService.getPet(-1L, loggedUserKeycloakId),
+            "ID não pode ser negativo");
     }
 
     // d
@@ -336,9 +337,25 @@ class PetServiceTest {
     void deletePetWithValidId() {
         Long validId = 1L;
 
+        User user = new User();
+        user.setId(1L);
+        user.setUsername("jhon");
+        user.setFirstName("Jhon");
+        user.setEmail("jhon@gmail.com");
+        user.setKeycloakId(loggedUserKeycloakId);
+
+        Pet pet = new Pet();
+        pet.setId(validId);
+        pet.setName("Apolo");
+        pet.setSpecies(Species.DOG);
+        pet.setHeight(30);
+        pet.setWeight(BigDecimal.valueOf(10.0));
+        pet.setUser(user);
+
+        when(petRepository.findById(validId)).thenReturn(Optional.of(pet));
         when(petRepository.existsById(validId)).thenReturn(true);
 
-        assertDoesNotThrow(() -> petService.deletePet(validId));
+        assertDoesNotThrow(() -> petService.deletePet(validId, loggedUserKeycloakId));
 
         verify(petRepository).deleteById(validId);
     }
@@ -346,15 +363,15 @@ class PetServiceTest {
     @Test
     void deletePetWithIdNull() {
         assertThrows(IllegalArgumentException.class,
-                () -> petService.deletePet(null),
-                "ID não pode ser nulo");
+            () -> petService.deletePet(null, loggedUserKeycloakId),
+            "ID não pode ser nulo");
     }
 
     @Test
     void deletePetWithInvalidId() {
         assertThrows(IllegalArgumentException.class,
-                () -> petService.deletePet(-1L),
-                "ID não pode ser negativo");
+            () -> petService.deletePet(-1L, loggedUserKeycloakId),
+            "ID não pode ser negativo");
     }
 
     // Structure Tests
@@ -370,8 +387,8 @@ class PetServiceTest {
         when(petRepository.findById(30L)).thenReturn(Optional.empty());
 
         assertThrows(NotFoundException.class,
-                () -> petService.updatePet(30L, updatedPetDto),
-                "Pet não encontrado");
+            () -> petService.updatePet(30L, updatedPetDto, loggedUserKeycloakId),
+            "Pet não encontrado");
     }
 
     @Test
@@ -380,8 +397,8 @@ class PetServiceTest {
         when(petRepository.existsById(30L)).thenReturn(false);
 
         assertThrows(ResourceNotFoundException.class,
-                () -> petService.deletePet(30L),
-                "Pet não encontrado");
+            () -> petService.deletePet(30L, loggedUserKeycloakId),
+            "Pet não encontrado");
     }
 
     @Test
@@ -389,7 +406,7 @@ class PetServiceTest {
         when(petRepository.findById(30L)).thenReturn(Optional.empty());
 
         assertThrows(NotFoundException.class,
-                () -> petService.getPet(30L),
-                "Pet não encontrado");
+            () -> petService.getPet(30L, loggedUserKeycloakId),
+            "Pet não encontrado");
     }
 }

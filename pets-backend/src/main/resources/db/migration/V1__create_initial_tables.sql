@@ -31,7 +31,7 @@ CREATE TABLE pet_analisys (
     id BIGSERIAL PRIMARY KEY,
     pet_id BIGINT NOT NULL,
     picture TEXT NOT NULL,
-    result VARCHAR(32) NOT NULL,
+    result VARCHAR(32),
     analysis_type VARCHAR(255) NOT NULL,
     analysis_status VARCHAR(255) NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

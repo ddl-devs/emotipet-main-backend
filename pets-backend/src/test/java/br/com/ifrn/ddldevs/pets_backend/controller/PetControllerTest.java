@@ -1,5 +1,12 @@
 package br.com.ifrn.ddldevs.pets_backend.controller;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+
 import br.com.ifrn.ddldevs.pets_backend.domain.Enums.Species;
 import br.com.ifrn.ddldevs.pets_backend.domain.Pet;
 import br.com.ifrn.ddldevs.pets_backend.domain.User;
@@ -8,6 +15,10 @@ import br.com.ifrn.ddldevs.pets_backend.mapper.PetMapper;
 import br.com.ifrn.ddldevs.pets_backend.repository.PetRepository;
 import br.com.ifrn.ddldevs.pets_backend.repository.UserRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -18,16 +29,8 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.result.MockMvcResultHandlers;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers;
-
-import java.math.BigDecimal;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
-
-import static org.junit.jupiter.api.Assertions.*;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import org.springframework.transaction.annotation.Transactional;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -75,7 +78,6 @@ class PetControllerTest {
     void shouldCreatePetSuccessfully() throws Exception {
 
         PetRequestDTO dto = new PetRequestDTO();
-        dto.setUserId(this.user.getId());
         dto.setName("Apolo");
         dto.setSpecies(Species.DOG);
         dto.setHeight(30);
@@ -85,11 +87,10 @@ class PetControllerTest {
 
         mockMvc.perform(
                 post("/pets/")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(requestBody)
-        ).andExpect(MockMvcResultMatchers.status().isCreated())
-                .andDo(MockMvcResultHandlers.print());
-
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(requestBody)
+            ).andExpect(MockMvcResultMatchers.status().isCreated())
+            .andDo(MockMvcResultHandlers.print());
 
         Optional<Pet> savedPet = petRepository.findAll().stream().findFirst();
         assertTrue(savedPet.isPresent());
@@ -109,7 +110,6 @@ class PetControllerTest {
         pet = petRepository.save(pet);
 
         PetRequestDTO dto = new PetRequestDTO();
-        dto.setUserId(1L);
         dto.setName("Beagles");
         dto.setSpecies(Species.CAT);
         dto.setHeight(10);
@@ -118,7 +118,7 @@ class PetControllerTest {
         String requestBody = objectMapper.writeValueAsString(dto);
 
         mockMvc.perform(
-                put("/pets/" + pet.getId())
+            put("/pets/" + pet.getId())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(requestBody)
         ).andExpect(MockMvcResultMatchers.status().isOk());
@@ -143,7 +143,7 @@ class PetControllerTest {
         petRepository.save(pet);
 
         mockMvc.perform(
-                delete("/pets/" + pet.getId())
+            delete("/pets/" + pet.getId())
         ).andExpect(MockMvcResultMatchers.status().isNoContent());
     }
 
@@ -165,8 +165,8 @@ class PetControllerTest {
 
         mockMvc.perform(
                 get("/pets/" + pet.getId())
-        ).andExpect(MockMvcResultMatchers.status().isOk())
-                .andExpect(MockMvcResultMatchers.content().json(expectedResponse));
+            ).andExpect(MockMvcResultMatchers.status().isOk())
+            .andExpect(MockMvcResultMatchers.content().json(expectedResponse));
     }
 
     @Test
@@ -194,14 +194,14 @@ class PetControllerTest {
         pets.add(pet2);
 
         String expected_response = objectMapper.writeValueAsString(
-                petMapper.toDTOList(pets)
+            petMapper.toDTOList(pets)
         );
 
         mockMvc.perform(
                 get("/pets/")
-                .contentType(MediaType.APPLICATION_JSON)
-        ).andExpect(MockMvcResultMatchers.status().isOk())
-                .andExpect(MockMvcResultMatchers.content().json(expected_response));
+                    .contentType(MediaType.APPLICATION_JSON)
+            ).andExpect(MockMvcResultMatchers.status().isOk())
+            .andExpect(MockMvcResultMatchers.content().json(expected_response));
 
     }
 }

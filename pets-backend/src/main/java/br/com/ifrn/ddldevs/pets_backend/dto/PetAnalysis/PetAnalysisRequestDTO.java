@@ -22,10 +22,6 @@ public class PetAnalysisRequestDTO {
     private String picture;
 
     @NotNull
-    @Schema(description = "Result of the Analysis", example = "Healthy")
-    private String result;
-
-    @NotNull
     @Schema(description = "Type of the Analysis", example = "Blood Test")
     private AnalysisType analysisType;
 

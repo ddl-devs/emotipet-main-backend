@@ -1,11 +1,11 @@
 package br.com.ifrn.ddldevs.pets_backend.mapper;
 
 import br.com.ifrn.ddldevs.pets_backend.domain.Recommendation;
-import br.com.ifrn.ddldevs.pets_backend.dto.Recomendation.RecommendationRequestDTO;
-import br.com.ifrn.ddldevs.pets_backend.dto.Recomendation.RecommendationResponseDTO;
-import org.mapstruct.*;
-
+import br.com.ifrn.ddldevs.pets_backend.dto.Recommendation.RecommendationRequestDTO;
+import br.com.ifrn.ddldevs.pets_backend.dto.Recommendation.RecommendationResponseDTO;
 import java.util.List;
+import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
 
 @Mapper()
 public interface RecommendationMapper {

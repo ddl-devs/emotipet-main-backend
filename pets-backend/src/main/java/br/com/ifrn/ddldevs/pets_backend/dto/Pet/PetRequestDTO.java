@@ -4,10 +4,15 @@ import br.com.ifrn.ddldevs.pets_backend.domain.Enums.Gender;
 import br.com.ifrn.ddldevs.pets_backend.domain.Enums.Species;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.*;
-import lombok.*;
-
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.Size;
 import java.math.BigDecimal;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
 @Data
 @AllArgsConstructor
@@ -41,7 +46,7 @@ public class PetRequestDTO {
 
     @Schema(description = "Pet's breed", example = "Yorkshire")
     @Valid
-    @Size(min=1, message = "Pet's breed can't be empty")
+    @Size(min = 1, message = "Pet's breed can't be empty")
     private String breed;
 
     @Schema(description = "Pet's height (cm)", example = "30")
@@ -50,12 +55,7 @@ public class PetRequestDTO {
     private Integer height;
 
     @Schema(description = "Pet's photo", example = "www.foto.com")
-    @Size(min=1, message = "Photo url can't be empty")
+    @Size(min = 1, message = "Photo url can't be empty")
     @Valid
     private String photoUrl;
-
-    @Schema(description = "Pet's owner id", example = "1")
-    @Valid
-    @NotNull(message = "Owner's id is mandatory")
-    private Long userId;
 }

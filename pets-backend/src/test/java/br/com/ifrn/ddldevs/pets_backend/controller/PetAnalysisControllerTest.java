@@ -1,18 +1,26 @@
 package br.com.ifrn.ddldevs.pets_backend.controller;
 
 import br.com.ifrn.ddldevs.pets_backend.domain.Enums.AnalysisType;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+
 import br.com.ifrn.ddldevs.pets_backend.domain.Enums.Species;
 import br.com.ifrn.ddldevs.pets_backend.domain.Pet;
 import br.com.ifrn.ddldevs.pets_backend.domain.PetAnalysis;
 import br.com.ifrn.ddldevs.pets_backend.domain.User;
 import br.com.ifrn.ddldevs.pets_backend.dto.PetAnalysis.PetAnalysisRequestDTO;
-import br.com.ifrn.ddldevs.pets_backend.dto.PetAnalysis.PetAnalysisResponseDTO;
 import br.com.ifrn.ddldevs.pets_backend.mapper.PetAnalysisMapper;
 import br.com.ifrn.ddldevs.pets_backend.repository.PetAnalysisRepository;
 import br.com.ifrn.ddldevs.pets_backend.repository.PetRepository;
 import br.com.ifrn.ddldevs.pets_backend.repository.UserRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.transaction.Transactional;
+import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -23,13 +31,6 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers;
-
-import java.math.BigDecimal;
-import java.util.ArrayList;
-import java.util.List;
-
-import static org.junit.jupiter.api.Assertions.*;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -89,13 +90,14 @@ class PetAnalysisControllerTest {
     @DisplayName("Should create a pet analysis successfully")
     @Transactional
     public void createPetAnalysisSuccessfully() throws Exception {
-        PetAnalysisRequestDTO requestDTO = new PetAnalysisRequestDTO(this.pet.getId(), "http://example.com/picture.jpg", "Healthy", AnalysisType.DOG_BREED);
+        PetAnalysisRequestDTO requestDTO = new PetAnalysisRequestDTO(this.pet.getId(),
+            "http://example.com/picture.jpg", AnalysisType.DOG_BREED);
         String requestBody = objectMapper.writeValueAsString(requestDTO);
 
         mockMvc.perform(post("/pet-analysis/")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(requestBody))
-                .andExpect(MockMvcResultMatchers.status().isCreated());
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(requestBody))
+            .andExpect(MockMvcResultMatchers.status().isCreated());
 
         List<PetAnalysis> analyses = petAnalysisRepository.findAll();
         assertEquals(1, analyses.size());
@@ -114,7 +116,7 @@ class PetAnalysisControllerTest {
         petAnalysis = petAnalysisRepository.save(petAnalysis);
 
         mockMvc.perform(delete("/pet-analysis/" + petAnalysis.getId()))
-                .andExpect(MockMvcResultMatchers.status().isNoContent());
+            .andExpect(MockMvcResultMatchers.status().isNoContent());
 
         assertFalse(petAnalysisRepository.existsById(petAnalysis.getId()));
     }
@@ -130,11 +132,12 @@ class PetAnalysisControllerTest {
         petAnalysis.setAnalysisType(AnalysisType.DOG_BREED);
         petAnalysis = petAnalysisRepository.save(petAnalysis);
 
-        String expectedResponse = objectMapper.writeValueAsString(petAnalysisMapper.toResponse(petAnalysis));
+        String expectedResponse = objectMapper.writeValueAsString(
+            petAnalysisMapper.toResponse(petAnalysis));
 
         mockMvc.perform(get("/pet-analysis/" + petAnalysis.getId()))
-                .andExpect(MockMvcResultMatchers.status().isOk())
-                .andExpect(MockMvcResultMatchers.content().json(expectedResponse));
+            .andExpect(MockMvcResultMatchers.status().isOk())
+            .andExpect(MockMvcResultMatchers.content().json(expectedResponse));
     }
 
     @Test
@@ -156,11 +159,12 @@ class PetAnalysisControllerTest {
         petAnalysis2 = petAnalysisRepository.save(petAnalysis2);
 
         List<PetAnalysis> petAnalyses = petAnalysisRepository.findAll();
-        String expectedResponse = objectMapper.writeValueAsString(petAnalysisMapper.toResponseList(petAnalyses));
+        String expectedResponse = objectMapper.writeValueAsString(
+            petAnalysisMapper.toResponseList(petAnalyses));
 
         mockMvc.perform(get("/pet-analysis/"))
-                .andExpect(MockMvcResultMatchers.status().isOk())
-                .andExpect(MockMvcResultMatchers.content().json(expectedResponse));
+            .andExpect(MockMvcResultMatchers.status().isOk())
+            .andExpect(MockMvcResultMatchers.content().json(expectedResponse));
     }
 
 
@@ -194,10 +198,11 @@ class PetAnalysisControllerTest {
         List<PetAnalysis> petAnalysisList = new ArrayList<>();
         petAnalysisList.add(petAnalysis);
 
-        String expectedResponse = objectMapper.writeValueAsString(petAnalysisMapper.toResponseList(petAnalysisList));
+        String expectedResponse = objectMapper.writeValueAsString(
+            petAnalysisMapper.toResponseList(petAnalysisList));
         System.out.println(expectedResponse);
         mockMvc.perform(get("/pet-analysis/pet/" + cat.getId()))
-                .andExpect(MockMvcResultMatchers.status().isOk())
-                .andExpect(MockMvcResultMatchers.content().json(expectedResponse));
+            .andExpect(MockMvcResultMatchers.status().isOk())
+            .andExpect(MockMvcResultMatchers.content().json(expectedResponse));
     }
 }

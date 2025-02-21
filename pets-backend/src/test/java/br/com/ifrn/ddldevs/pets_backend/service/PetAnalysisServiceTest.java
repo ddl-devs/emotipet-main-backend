@@ -4,13 +4,26 @@ import br.com.ifrn.ddldevs.pets_backend.amazonSqs.AnalysisMessage;
 import br.com.ifrn.ddldevs.pets_backend.amazonSqs.SQSSenderService;
 import br.com.ifrn.ddldevs.pets_backend.domain.Enums.AnalysisStatus;
 import br.com.ifrn.ddldevs.pets_backend.domain.Enums.AnalysisType;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.Mockito.*;
+
+import br.com.ifrn.ddldevs.pets_backend.domain.Enums.Species;
 import br.com.ifrn.ddldevs.pets_backend.domain.Pet;
 import br.com.ifrn.ddldevs.pets_backend.domain.PetAnalysis;
-import br.com.ifrn.ddldevs.pets_backend.dto.PetAnalysis.PetAnalysisResponseDTO;
+import br.com.ifrn.ddldevs.pets_backend.domain.User;
 import br.com.ifrn.ddldevs.pets_backend.dto.PetAnalysis.PetAnalysisRequestDTO;
+import br.com.ifrn.ddldevs.pets_backend.dto.PetAnalysis.PetAnalysisResponseDTO;
 import br.com.ifrn.ddldevs.pets_backend.mapper.PetAnalysisMapper;
 import br.com.ifrn.ddldevs.pets_backend.repository.PetAnalysisRepository;
 import br.com.ifrn.ddldevs.pets_backend.repository.PetRepository;
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
@@ -18,13 +31,6 @@ import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
-
-import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.*;
 
 @SpringBootTest
 @ActiveProfiles("test")
@@ -42,6 +48,8 @@ class PetAnalysisServiceTest {
     @InjectMocks
     private PetAnalysisService petAnalysisService;
 
+    private final String loggedUserKeycloakId = "1abc23";
+
     @Mock
     private SQSSenderService sqsSenderService;
 
@@ -52,10 +60,22 @@ class PetAnalysisServiceTest {
 
     @Test
     void createPetAnalysisWithValidPet() {
+        User user = new User();
+        user.setId(1L);
+        user.setUsername("jhon");
+        user.setFirstName("Jhon");
+        user.setEmail("jhon@gmail.com");
+        user.setKeycloakId(loggedUserKeycloakId);
+
         Pet pet = new Pet();
         pet.setId(1L);
+        pet.setName("Apolo");
+        pet.setSpecies(Species.DOG);
+        pet.setHeight(30);
+        pet.setWeight(BigDecimal.valueOf(10.0));
+        pet.setUser(user);
 
-        PetAnalysisRequestDTO requestDTO = new PetAnalysisRequestDTO(1L, "http://example.com/picture.jpg", "Healthy", AnalysisType.DOG_BREED);
+        PetAnalysisRequestDTO requestDTO = new PetAnalysisRequestDTO(1L, "http://example.com/picture.jpg", AnalysisType.DOG_BREED);
         PetAnalysis petAnalysis = new PetAnalysis();
         PetAnalysisResponseDTO responseDTO = new PetAnalysisResponseDTO(1L, LocalDateTime.now(),  LocalDateTime.now(),"http://example.com/picture.jpg", "Healthy", AnalysisType.DOG_BREED, AnalysisStatus.COMPLETED);
 
@@ -67,7 +87,8 @@ class PetAnalysisServiceTest {
         when(petAnalysisMapper.toResponse(petAnalysis)).thenReturn(responseDTO);
         doNothing().when(sqsSenderService).sendMessage(analysisMessage);
 
-        PetAnalysisResponseDTO result = petAnalysisService.createPetAnalysis(requestDTO);
+        PetAnalysisResponseDTO result = petAnalysisService.createPetAnalysis(requestDTO,
+            loggedUserKeycloakId);
 
         assertNotNull(result);
         assertEquals("http://example.com/picture.jpg", result.picture());
@@ -80,11 +101,12 @@ class PetAnalysisServiceTest {
 
     @Test
     void createPetAnalysisWithInvalidPet() {
-        PetAnalysisRequestDTO requestDTO = new PetAnalysisRequestDTO(-1L, "http://example.com/picture.jpg", "Healthy", AnalysisType.DOG_BREED);
+        PetAnalysisRequestDTO requestDTO = new PetAnalysisRequestDTO(-1L, "http://example.com/picture.jpg", AnalysisType.DOG_BREED);
 
         when(petRepository.findById(999L)).thenReturn(Optional.empty());
 
-        RuntimeException exception = assertThrows(RuntimeException.class, () -> petAnalysisService.createPetAnalysis(requestDTO));
+        RuntimeException exception = assertThrows(RuntimeException.class,
+            () -> petAnalysisService.createPetAnalysis(requestDTO, loggedUserKeycloakId));
 
         assertEquals("ID não pode ser negativo", exception.getMessage());
 
@@ -93,20 +115,43 @@ class PetAnalysisServiceTest {
 
     @Test
     void createPetAnalysisWithNullPet() {
-        PetAnalysisRequestDTO requestDTO = new PetAnalysisRequestDTO(-1L, "http://example.com/picture.jpg", "Healthy", AnalysisType.DOG_BREED);
+        PetAnalysisRequestDTO requestDTO = new PetAnalysisRequestDTO(-1L, "http://example.com/picture.jpg", AnalysisType.DOG_BREED);
 
         assertThrows(IllegalArgumentException.class,
-                () -> petAnalysisService.createPetAnalysis(requestDTO),
-                "ID não pode ser nulo");
+            () -> petAnalysisService.createPetAnalysis(requestDTO, loggedUserKeycloakId),
+            "ID não pode ser nulo");
     }
 
     // b
 
     @Test
     void deletePetAnalysisWithValidId() {
+        User user = new User();
+        user.setId(1L);
+        user.setUsername("jhon");
+        user.setFirstName("Jhon");
+        user.setEmail("jhon@gmail.com");
+        user.setKeycloakId(loggedUserKeycloakId);
+
+        Pet pet = new Pet();
+        pet.setId(2L);
+        pet.setName("Apolo");
+        pet.setSpecies(Species.DOG);
+        pet.setHeight(30);
+        pet.setWeight(BigDecimal.valueOf(10.0));
+        pet.setUser(user);
+
+        PetAnalysis petAnalysis = new PetAnalysis();
+        petAnalysis.setId(1L);
+        petAnalysis.setPet(pet);
+        petAnalysis.setPicture("http://example.com/picture.jpg");
+        petAnalysis.setResult("Healthy");
+        petAnalysis.setAnalysisType(AnalysisType.DOG_BREED);
+
+        when(petAnalysisRepository.findById(1L)).thenReturn(Optional.of(petAnalysis));
         when(petAnalysisRepository.existsById(1L)).thenReturn(true);
 
-        assertDoesNotThrow(() -> petAnalysisService.deletePetAnalysis(1L));
+        assertDoesNotThrow(() -> petAnalysisService.deletePetAnalysis(1L, loggedUserKeycloakId));
 
         verify(petAnalysisRepository).deleteById(1L);
     }
@@ -114,15 +159,15 @@ class PetAnalysisServiceTest {
     @Test
     void deletePetAnalysisWithIdNull() {
         assertThrows(IllegalArgumentException.class,
-                () -> petAnalysisService.deletePetAnalysis(null),
-                "ID não pode ser nulo");
+            () -> petAnalysisService.deletePetAnalysis(null, loggedUserKeycloakId),
+            "ID não pode ser nulo");
     }
 
     @Test
     void deletePetWithInvalidId() {
         assertThrows(IllegalArgumentException.class,
-                () -> petAnalysisService.deletePetAnalysis(-1L),
-                "ID não pode ser negativo");
+            () -> petAnalysisService.deletePetAnalysis(-1L, loggedUserKeycloakId),
+            "ID não pode ser negativo");
     }
 
     // d
@@ -130,12 +175,36 @@ class PetAnalysisServiceTest {
     @Test
     void getPetAnalysesByPetIdWithValidId() {
         List<PetAnalysis> analyses = new ArrayList<>();
-        analyses.add(new PetAnalysis());
+
+        User user = new User();
+        user.setId(1L);
+        user.setUsername("jhon");
+        user.setFirstName("Jhon");
+        user.setEmail("jhon@gmail.com");
+        user.setKeycloakId(loggedUserKeycloakId);
+
+        Pet pet = new Pet();
+        pet.setId(1L);
+        pet.setName("Apolo");
+        pet.setSpecies(Species.DOG);
+        pet.setHeight(30);
+        pet.setWeight(BigDecimal.valueOf(10.0));
+        pet.setUser(user);
+
+        PetAnalysis analyse = new PetAnalysis();
+        analyse.setId(1L);
+        analyse.setPet(pet);
+        analyse.setAnalysisType(AnalysisType.DOG_BREED);
+        analyse.setResult("Healthy");
+        analyse.setPicture("http://example.com/picture.jpg");
+
+        analyses.add(analyse);
 
         when(petAnalysisRepository.findAllByPetId(1L)).thenReturn(analyses);
         when(petAnalysisMapper.toResponseList(analyses)).thenReturn(new ArrayList<>());
 
-        List<PetAnalysisResponseDTO> response = petAnalysisService.getAllByPetId(1L);
+        List<PetAnalysisResponseDTO> response = petAnalysisService.getAllByPetId(1L,
+            loggedUserKeycloakId);
 
         assertNotNull(response);
         verify(petAnalysisRepository).findAllByPetId(1L);
@@ -144,21 +213,36 @@ class PetAnalysisServiceTest {
     @Test
     void getPetAnalysesByPetIdWithInvalidId() {
         assertThrows(IllegalArgumentException.class,
-                () -> petAnalysisService.getAllByPetId(-1L),
-                "ID não pode ser negativo");
+            () -> petAnalysisService.getAllByPetId(-1L, loggedUserKeycloakId),
+            "ID não pode ser negativo");
     }
 
     @Test
     void getPetAnalysesByPetIdWithNullId() {
         assertThrows(IllegalArgumentException.class,
-                () -> petAnalysisService.getAllByPetId(null),
-                "ID não pode ser nulo");
+            () -> petAnalysisService.getAllByPetId(null, loggedUserKeycloakId),
+            "ID não pode ser nulo");
     }
 
     // e
 
     @Test
     void getPetAnalysesWithValidId() {
+        User user = new User();
+        user.setId(1L);
+        user.setUsername("jhon");
+        user.setFirstName("Jhon");
+        user.setEmail("jhon@gmail.com");
+        user.setKeycloakId(loggedUserKeycloakId);
+
+        Pet pet = new Pet();
+        pet.setId(1L);
+        pet.setName("Apolo");
+        pet.setSpecies(Species.DOG);
+        pet.setHeight(30);
+        pet.setWeight(BigDecimal.valueOf(10.0));
+        pet.setUser(user);
+
         PetAnalysis analyses = new PetAnalysis();
         analyses.setId(1L);
         analyses.setPet(new Pet());
@@ -173,7 +257,10 @@ class PetAnalysisServiceTest {
         when(petAnalysisRepository.findById(1L)).thenReturn(Optional.of(analyses));
         when(petAnalysisMapper.toResponse(analyses)).thenReturn(responseDTO);
 
-        PetAnalysisResponseDTO result = petAnalysisService.getPetAnalysis(1L);
+        PetAnalysisResponseDTO result = petAnalysisService.getPetAnalysis(
+            1L,
+            loggedUserKeycloakId
+        );
 
         assertNotNull(result);
         assertEquals(1L, result.id());
@@ -182,14 +269,14 @@ class PetAnalysisServiceTest {
     @Test
     void getPetAnalysesWithInvalidId() {
         assertThrows(IllegalArgumentException.class,
-                () -> petAnalysisService.getPetAnalysis(-1L),
-                "ID não pode ser negativo");
+            () -> petAnalysisService.getPetAnalysis(-1L, loggedUserKeycloakId),
+            "ID não pode ser negativo");
     }
 
     @Test
     void getPetAnalysesIdWithNullId() {
         assertThrows(IllegalArgumentException.class,
-                () -> petAnalysisService.getAllByPetId(null),
-                "ID não pode ser nulo");
+            () -> petAnalysisService.getAllByPetId(null, loggedUserKeycloakId),
+            "ID não pode ser nulo");
     }
 }
