@@ -1,5 +1,6 @@
 package br.com.ifrn.ddldevs.pets_backend.dto.Recommendation;
 
+import br.com.ifrn.ddldevs.pets_backend.domain.Enums.RecommendationCategories;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
@@ -19,11 +20,7 @@ public class RecommendationRequestDTO {
     @Valid
     private Long petId;
 
-    @Schema(description = "Details of the recommendation", example = "Feed your pet twice daily")
-    @NotNull
-    private String recommendation;
-
     @Schema(description = "Category of the recommendation", example = "Nutrition")
     @NotNull
-    private String categoryRecommendation;
+    private RecommendationCategories categoryRecommendation;
 }

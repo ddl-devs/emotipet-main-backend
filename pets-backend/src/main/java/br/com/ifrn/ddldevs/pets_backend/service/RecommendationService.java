@@ -7,14 +7,18 @@ import br.com.ifrn.ddldevs.pets_backend.dto.Recommendation.RecommendationRespons
 import br.com.ifrn.ddldevs.pets_backend.exception.AccessDeniedException;
 import br.com.ifrn.ddldevs.pets_backend.exception.ResourceNotFoundException;
 import br.com.ifrn.ddldevs.pets_backend.mapper.RecommendationMapper;
+import br.com.ifrn.ddldevs.pets_backend.microservice.RecommendationRequestsService;
+import br.com.ifrn.ddldevs.pets_backend.repository.PetAnalysisRepository;
 import br.com.ifrn.ddldevs.pets_backend.repository.PetRepository;
 import br.com.ifrn.ddldevs.pets_backend.repository.RecommendationRepository;
+
 import java.util.List;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.client.RestTemplate;
 
 @Service
 public class RecommendationService {
@@ -27,6 +31,15 @@ public class RecommendationService {
 
     @Autowired
     private PetRepository petRepository;
+
+    @Autowired
+    private PetAnalysisRepository petAnalysisRepository;
+
+    @Autowired
+    private RecommendationRequestsService recommendationRequestsService;
+
+    private final RestTemplate restTemplate = new RestTemplate();
+
 
     @Transactional
     public RecommendationResponseDTO createRecommendation(
@@ -50,8 +63,11 @@ public class RecommendationService {
         recommendation.setPet(pet);
         pet.getRecommendations().add(recommendation);
 
+        recommendationRequestsService.updateRecommendation(recommendation);
+
         recommendationRepository.save(recommendation);
         petRepository.save(pet);
+
 
         return recommendationMapper.toRecommendationResponseDTO(recommendation);
     }

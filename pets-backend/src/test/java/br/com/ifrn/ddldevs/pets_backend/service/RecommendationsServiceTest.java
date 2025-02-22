@@ -9,6 +9,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import br.com.ifrn.ddldevs.pets_backend.domain.Enums.RecommendationCategories;
 import br.com.ifrn.ddldevs.pets_backend.domain.Enums.Species;
 import br.com.ifrn.ddldevs.pets_backend.domain.Pet;
 import br.com.ifrn.ddldevs.pets_backend.domain.Recommendation;
@@ -73,8 +74,7 @@ class RecommendationsServiceTest {
 
         RecommendationRequestDTO requestDTO = new RecommendationRequestDTO(
             1L,
-            "Feed your pet twice daily",
-            "Nutrition"
+            RecommendationCategories.HEALTH
         );
         Recommendation recommendation = new Recommendation();
         RecommendationResponseDTO responseDTO = new RecommendationResponseDTO(
@@ -82,7 +82,7 @@ class RecommendationsServiceTest {
             LocalDateTime.now(),
             LocalDateTime.now(),
             "Feed your pet twice daily",
-            "Nutrition"
+            RecommendationCategories.HEALTH
         );
 
         when(petRepository.findById(1L)).thenReturn(Optional.of(pet));
@@ -96,7 +96,7 @@ class RecommendationsServiceTest {
 
         assertNotNull(result);
         assertEquals("Feed your pet twice daily", result.recommendation());
-        assertEquals("Nutrition", result.categoryRecommendation());
+        assertEquals(RecommendationCategories.HEALTH, result.categoryRecommendation());
 
         verify(petRepository).findById(1L);
         verify(recommendationRepository).save(recommendation);
@@ -104,8 +104,7 @@ class RecommendationsServiceTest {
 
     @Test
     void createRecommendationWithInvalidIdPet() {
-        RecommendationRequestDTO requestDTO = new RecommendationRequestDTO(-1L,
-            "Feed your pet twice daily", "Nutrition");
+        RecommendationRequestDTO requestDTO = new RecommendationRequestDTO(-1L, RecommendationCategories.HEALTH);
 
         when(petRepository.findById(-1L)).thenReturn(Optional.empty());
 
@@ -119,8 +118,7 @@ class RecommendationsServiceTest {
 
     @Test
     void createRecommendationWithNullIDPet() {
-        RecommendationRequestDTO requestDTO = new RecommendationRequestDTO(null,
-            "Feed your pet twice daily", "Nutrition");
+        RecommendationRequestDTO requestDTO = new RecommendationRequestDTO(null, RecommendationCategories.HEALTH);
 
         when(petRepository.findById(null)).thenReturn(Optional.empty());
 
@@ -154,7 +152,7 @@ class RecommendationsServiceTest {
         Recommendation recommendation = new Recommendation();
         recommendation.setId(1L);
         recommendation.setRecommendation("Feed your pet twice daily");
-        recommendation.setCategoryRecommendation("Nutrition");
+        recommendation.setCategoryRecommendation(RecommendationCategories.HEALTH);
         recommendation.setCreatedAt(LocalDateTime.now());
         recommendation.setPet(pet);
 
@@ -203,7 +201,7 @@ class RecommendationsServiceTest {
         Recommendation recommendation = new Recommendation();
         recommendation.setId(1L);
         recommendation.setPet(pet);
-        recommendation.setCategoryRecommendation("food");
+        recommendation.setCategoryRecommendation(RecommendationCategories.HEALTH);
         recommendation.setRecommendation("Lorem Ipsum");
 
         List<Recommendation> recommendations = new ArrayList<>();
@@ -256,7 +254,7 @@ class RecommendationsServiceTest {
         Recommendation recommendation = new Recommendation();
         recommendation.setId(1L);
         recommendation.setRecommendation("Feed your pet twice daily");
-        recommendation.setCategoryRecommendation("Nutrition");
+        recommendation.setCategoryRecommendation(RecommendationCategories.HEALTH);
         recommendation.setCreatedAt(LocalDateTime.now());
         recommendation.setPet(pet);
 
@@ -265,7 +263,7 @@ class RecommendationsServiceTest {
             LocalDateTime.now(),
             LocalDateTime.now(),
             "Feed your pet twice daily",
-            "Nutrition"
+            RecommendationCategories.HEALTH
         );
 
         when(recommendationRepository.findById(1L)).thenReturn(Optional.of(recommendation));
