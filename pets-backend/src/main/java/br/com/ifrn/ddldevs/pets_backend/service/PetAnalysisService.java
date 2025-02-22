@@ -1,6 +1,8 @@
 package br.com.ifrn.ddldevs.pets_backend.service;
 
 
+import br.com.ifrn.ddldevs.pets_backend.amazonSqs.AnalysisMessage;
+import br.com.ifrn.ddldevs.pets_backend.amazonSqs.SQSSenderService;
 import br.com.ifrn.ddldevs.pets_backend.domain.Pet;
 import br.com.ifrn.ddldevs.pets_backend.domain.PetAnalysis;
 import br.com.ifrn.ddldevs.pets_backend.dto.PetAnalysis.PetAnalysisRequestDTO;
@@ -21,6 +23,9 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @RequiredArgsConstructor
 public class PetAnalysisService {
+
+    @Autowired
+    private SQSSenderService senderService;
 
     @Autowired
     private PetAnalysisRepository petAnalysisRepository;
@@ -55,6 +60,13 @@ public class PetAnalysisService {
 
         petAnalysisRepository.save(petAnalysis);
         petRepository.save(pet);
+
+        AnalysisMessage message = new AnalysisMessage(
+                petAnalysis.getId(),
+                petAnalysis.getPicture(),
+                petAnalysis.getAnalysisType()
+        );
+        senderService.sendMessage(message);
 
         return petAnalysisMapper.toResponse(petAnalysis);
     }

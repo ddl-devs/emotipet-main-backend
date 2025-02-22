@@ -1,5 +1,6 @@
 package br.com.ifrn.ddldevs.pets_backend.controller;
 
+import br.com.ifrn.ddldevs.pets_backend.domain.Enums.AnalysisType;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
@@ -90,7 +91,7 @@ class PetAnalysisControllerTest {
     @Transactional
     public void createPetAnalysisSuccessfully() throws Exception {
         PetAnalysisRequestDTO requestDTO = new PetAnalysisRequestDTO(this.pet.getId(),
-            "http://example.com/picture.jpg", "Healthy", "Blood Test");
+            "http://example.com/picture.jpg", AnalysisType.DOG_BREED);
         String requestBody = objectMapper.writeValueAsString(requestDTO);
 
         mockMvc.perform(post("/pet-analysis/")
@@ -111,7 +112,7 @@ class PetAnalysisControllerTest {
         petAnalysis.setPet(this.pet);
         petAnalysis.setResult("Happy");
         petAnalysis.setPicture("www.pic.com");
-        petAnalysis.setAnalysisType("Humor");
+        petAnalysis.setAnalysisType(AnalysisType.DOG_BREED);
         petAnalysis = petAnalysisRepository.save(petAnalysis);
 
         mockMvc.perform(delete("/pet-analysis/" + petAnalysis.getId()))
@@ -128,7 +129,7 @@ class PetAnalysisControllerTest {
         petAnalysis.setPet(this.pet);
         petAnalysis.setResult("Happy");
         petAnalysis.setPicture("www.pic.com");
-        petAnalysis.setAnalysisType("Humor");
+        petAnalysis.setAnalysisType(AnalysisType.DOG_BREED);
         petAnalysis = petAnalysisRepository.save(petAnalysis);
 
         String expectedResponse = objectMapper.writeValueAsString(
@@ -147,14 +148,14 @@ class PetAnalysisControllerTest {
         petAnalysis.setPet(this.pet);
         petAnalysis.setResult("Happy");
         petAnalysis.setPicture("www.pic.com");
-        petAnalysis.setAnalysisType("Humor");
+        petAnalysis.setAnalysisType(AnalysisType.DOG_BREED);
         petAnalysis = petAnalysisRepository.save(petAnalysis);
 
         PetAnalysis petAnalysis2 = new PetAnalysis();
         petAnalysis2.setPet(this.pet);
         petAnalysis2.setResult("Sad");
         petAnalysis2.setPicture("www.pic.com");
-        petAnalysis2.setAnalysisType("Humor");
+        petAnalysis2.setAnalysisType(AnalysisType.DOG_BREED);
         petAnalysis2 = petAnalysisRepository.save(petAnalysis2);
 
         List<PetAnalysis> petAnalyses = petAnalysisRepository.findAll();
@@ -184,14 +185,14 @@ class PetAnalysisControllerTest {
         petAnalysis.setPet(cat);
         petAnalysis.setResult("Angry");
         petAnalysis.setPicture("www.pic.com");
-        petAnalysis.setAnalysisType("Humor");
+        petAnalysis.setAnalysisType(AnalysisType.CAT_BREED);
         petAnalysis = petAnalysisRepository.save(petAnalysis);
 
         PetAnalysis petAnalysis2 = new PetAnalysis();
         petAnalysis2.setPet(this.pet);
         petAnalysis2.setResult("Sad");
         petAnalysis2.setPicture("www.pic.com");
-        petAnalysis2.setAnalysisType("Humor");
+        petAnalysis2.setAnalysisType(AnalysisType.CAT_BREED);
         petAnalysis2 = petAnalysisRepository.save(petAnalysis2);
 
         List<PetAnalysis> petAnalysisList = new ArrayList<>();

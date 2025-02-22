@@ -1,15 +1,21 @@
 package br.com.ifrn.ddldevs.pets_backend.service;
 
+import br.com.ifrn.ddldevs.pets_backend.amazonSqs.AnalysisMessage;
+import br.com.ifrn.ddldevs.pets_backend.amazonSqs.SQSSenderService;
+import br.com.ifrn.ddldevs.pets_backend.domain.Enums.AnalysisStatus;
+import br.com.ifrn.ddldevs.pets_backend.domain.Enums.AnalysisType;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.Mockito.*;
+
+import br.com.ifrn.ddldevs.pets_backend.domain.Enums.Species;
 import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import br.com.ifrn.ddldevs.pets_backend.domain.Enums.Species;
 import br.com.ifrn.ddldevs.pets_backend.domain.Pet;
 import br.com.ifrn.ddldevs.pets_backend.domain.PetAnalysis;
 import br.com.ifrn.ddldevs.pets_backend.domain.User;
@@ -49,6 +55,9 @@ class PetAnalysisServiceTest {
 
     private final String loggedUserKeycloakId = "1abc23";
 
+    @Mock
+    private SQSSenderService sqsSenderService;
+
     @BeforeEach
     void setUp() {
         MockitoAnnotations.openMocks(this);
@@ -71,22 +80,17 @@ class PetAnalysisServiceTest {
         pet.setWeight(BigDecimal.valueOf(10.0));
         pet.setUser(user);
 
-        PetAnalysisRequestDTO requestDTO = new PetAnalysisRequestDTO(1L,
-            "http://example.com/picture.jpg", "Healthy", "Blood Test");
+        PetAnalysisRequestDTO requestDTO = new PetAnalysisRequestDTO(1L, "http://example.com/picture.jpg", AnalysisType.DOG_BREED);
         PetAnalysis petAnalysis = new PetAnalysis();
-        PetAnalysisResponseDTO responseDTO = new PetAnalysisResponseDTO(
-            1L,
-            LocalDateTime.now(),
-            LocalDateTime.now(),
-            "http://example.com/picture.jpg",
-            "Healthy",
-            "Blood Test"
-        );
+        PetAnalysisResponseDTO responseDTO = new PetAnalysisResponseDTO(1L, LocalDateTime.now(),  LocalDateTime.now(),"http://example.com/picture.jpg", "Healthy", 83.24,AnalysisType.DOG_BREED, AnalysisStatus.COMPLETED);
+
+        AnalysisMessage analysisMessage = new AnalysisMessage(1L, "http", AnalysisType.DOG_BREED);
 
         when(petRepository.findById(1L)).thenReturn(Optional.of(pet));
         when(petAnalysisMapper.toEntity(requestDTO)).thenReturn(petAnalysis);
         when(petAnalysisRepository.save(petAnalysis)).thenReturn(petAnalysis);
         when(petAnalysisMapper.toResponse(petAnalysis)).thenReturn(responseDTO);
+        doNothing().when(sqsSenderService).sendMessage(analysisMessage);
 
         PetAnalysisResponseDTO result = petAnalysisService.createPetAnalysis(requestDTO,
             loggedUserKeycloakId);
@@ -94,7 +98,7 @@ class PetAnalysisServiceTest {
         assertNotNull(result);
         assertEquals("http://example.com/picture.jpg", result.picture());
         assertEquals("Healthy", result.result());
-        assertEquals("Blood Test", result.analysisType());
+        assertEquals(AnalysisType.DOG_BREED, result.analysisType());
 
         verify(petRepository).findById(1L);
         verify(petAnalysisRepository).save(petAnalysis);
@@ -102,8 +106,7 @@ class PetAnalysisServiceTest {
 
     @Test
     void createPetAnalysisWithInvalidPet() {
-        PetAnalysisRequestDTO requestDTO = new PetAnalysisRequestDTO(-1L,
-            "http://example.com/picture.jpg", "Healthy", "Blood Test");
+        PetAnalysisRequestDTO requestDTO = new PetAnalysisRequestDTO(-1L, "http://example.com/picture.jpg", AnalysisType.DOG_BREED);
 
         when(petRepository.findById(999L)).thenReturn(Optional.empty());
 
@@ -117,8 +120,7 @@ class PetAnalysisServiceTest {
 
     @Test
     void createPetAnalysisWithNullPet() {
-        PetAnalysisRequestDTO requestDTO = new PetAnalysisRequestDTO(-1L,
-            "http://example.com/picture.jpg", "Healthy", "Blood Test");
+        PetAnalysisRequestDTO requestDTO = new PetAnalysisRequestDTO(-1L, "http://example.com/picture.jpg", AnalysisType.DOG_BREED);
 
         assertThrows(IllegalArgumentException.class,
             () -> petAnalysisService.createPetAnalysis(requestDTO, loggedUserKeycloakId),
@@ -149,7 +151,7 @@ class PetAnalysisServiceTest {
         petAnalysis.setPet(pet);
         petAnalysis.setPicture("http://example.com/picture.jpg");
         petAnalysis.setResult("Healthy");
-        petAnalysis.setAnalysisType("Emotion Test");
+        petAnalysis.setAnalysisType(AnalysisType.DOG_BREED);
 
         when(petAnalysisRepository.findById(1L)).thenReturn(Optional.of(petAnalysis));
         when(petAnalysisRepository.existsById(1L)).thenReturn(true);
@@ -197,7 +199,7 @@ class PetAnalysisServiceTest {
         PetAnalysis analyse = new PetAnalysis();
         analyse.setId(1L);
         analyse.setPet(pet);
-        analyse.setAnalysisType("Blood Test");
+        analyse.setAnalysisType(AnalysisType.DOG_BREED);
         analyse.setResult("Healthy");
         analyse.setPicture("http://example.com/picture.jpg");
 
@@ -248,19 +250,14 @@ class PetAnalysisServiceTest {
 
         PetAnalysis analyses = new PetAnalysis();
         analyses.setId(1L);
-        analyses.setPet(pet);
-        analyses.setAnalysisType("Blood Test");
+        analyses.setPet(new Pet());
+        analyses.setAnalysisType(AnalysisType.DOG_BREED);
         analyses.setResult("Healthy");
         analyses.setPicture("http://example.com/picture.jpg");
 
         PetAnalysisResponseDTO responseDTO = new PetAnalysisResponseDTO(
-            1L,
-            LocalDateTime.now(),
-            LocalDateTime.now(),
-            "http://example.com/picture.jpg",
-            "Healthy",
-            "Blood Test"
-        );
+                1L, LocalDateTime.now(), LocalDateTime.now(), "http://example.com/picture.jpg",
+                "Healthy", 90.0,AnalysisType.DOG_BREED, AnalysisStatus.COMPLETED);
 
         when(petAnalysisRepository.findById(1L)).thenReturn(Optional.of(analyses));
         when(petAnalysisMapper.toResponse(analyses)).thenReturn(responseDTO);

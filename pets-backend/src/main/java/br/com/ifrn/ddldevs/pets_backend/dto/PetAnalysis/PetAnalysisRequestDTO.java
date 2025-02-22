@@ -1,5 +1,6 @@
 package br.com.ifrn.ddldevs.pets_backend.dto.PetAnalysis;
 
+import br.com.ifrn.ddldevs.pets_backend.domain.Enums.AnalysisType;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
@@ -21,11 +22,7 @@ public class PetAnalysisRequestDTO {
     private String picture;
 
     @NotNull
-    @Schema(description = "Result of the Analysis", example = "Healthy")
-    private String result;
-
-    @NotNull
     @Schema(description = "Type of the Analysis", example = "Blood Test")
-    private String analysisType;
+    private AnalysisType analysisType;
 
 }
