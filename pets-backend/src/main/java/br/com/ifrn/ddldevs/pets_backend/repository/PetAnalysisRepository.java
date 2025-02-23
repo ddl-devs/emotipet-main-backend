@@ -16,6 +16,7 @@ public interface PetAnalysisRepository extends JpaRepository<PetAnalysis, Long> 
         WHERE p.pet.id = :petId 
         AND p.createdAt >= :oneMonthAgo 
         AND (p.analysisType = 'DOG_EMOTIONAL' OR p.analysisType = 'CAT_EMOTIONAL')
+        AND (p.analysisStatus = 'COMPLETED')
         ORDER BY p.createdAt DESC
     """)
     List<PetAnalysis> findRecentEmotionalAnalyses(@Param("petId") Long petId, @Param("oneMonthAgo") LocalDateTime oneMonthAgo);

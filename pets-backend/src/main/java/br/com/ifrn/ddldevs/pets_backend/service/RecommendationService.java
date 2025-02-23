@@ -5,6 +5,7 @@ import br.com.ifrn.ddldevs.pets_backend.domain.Recommendation;
 import br.com.ifrn.ddldevs.pets_backend.dto.Recommendation.RecommendationRequestDTO;
 import br.com.ifrn.ddldevs.pets_backend.dto.Recommendation.RecommendationResponseDTO;
 import br.com.ifrn.ddldevs.pets_backend.exception.AccessDeniedException;
+import br.com.ifrn.ddldevs.pets_backend.exception.BusinessException;
 import br.com.ifrn.ddldevs.pets_backend.exception.ResourceNotFoundException;
 import br.com.ifrn.ddldevs.pets_backend.mapper.RecommendationMapper;
 import br.com.ifrn.ddldevs.pets_backend.microservice.RecommendationRequestsService;
@@ -62,6 +63,8 @@ public class RecommendationService {
 
         recommendation.setPet(pet);
         pet.getRecommendations().add(recommendation);
+
+        validateRecommendationData(recommendation);
 
         recommendationRequestsService.updateRecommendation(recommendation);
 
@@ -143,6 +146,31 @@ public class RecommendationService {
         if (!pet.getUser().getKeycloakId().equals(loggedUserKeycloakId)) {
             throw new AccessDeniedException(
                 "Você não pode acessar dados de pets de outros usuários!");
+        }
+    }
+
+    private void validateRecommendationData(Recommendation recommendation) {
+        switch (recommendation.getCategoryRecommendation()){
+            case HEALTH:
+            case ACTIVITIES:
+            case TRAINING:
+            case PRODUCTS:
+                if(recommendation.getPet().getBreed() == null && recommendation.getPet().getSpecies() == null) {
+                    throw new BusinessException("É necessário pelo menos a raça/espécie para criar uma " +
+                            "recomendação nesta categoria");
+                }
+                break;
+            case IMC:
+                if(recommendation.getPet().getBreed() == null && recommendation.getPet().getSpecies() == null) {
+                    throw new BusinessException("É necessário pelo menos a raça/espécie para criar uma " +
+                            "recomendação nesta categoria");
+                }
+                if(recommendation.getPet().getWeight() == null && recommendation.getPet().getHeight() == null) {
+                    throw new BusinessException("É necessário a altura e peso para calcular o IMC");
+                }
+                break;
+            default:
+                throw new BusinessException("Categoria inválida");
         }
     }
 }

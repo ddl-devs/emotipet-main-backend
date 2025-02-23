@@ -5,7 +5,6 @@ import br.com.ifrn.ddldevs.pets_backend.domain.Recommendation;
 import br.com.ifrn.ddldevs.pets_backend.repository.PetAnalysisRepository;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.apache.james.mime4j.dom.field.DateTimeField;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
@@ -53,6 +52,7 @@ public class RecommendationRequestsService {
 
     private Map<String, Object> prepareCommonRequest(Recommendation recommendation) {
         Map<String, Object> requestBody = new HashMap<>();
+        requestBody.put("species", recommendation.getPet().getSpecies());
         requestBody.put("breed", recommendation.getPet().getBreed());
         requestBody.put("weight", recommendation.getPet().getWeight());
         requestBody.put("age", recommendation.getPet().getAge());
@@ -89,6 +89,7 @@ public class RecommendationRequestsService {
 
     private Map<String, Object> prepareIMCRequest(Recommendation recommendation) {
         Map<String, Object> requestBody = new HashMap<>();
+        requestBody.put("species", recommendation.getPet().getSpecies());
         requestBody.put("breed", recommendation.getPet().getBreed());
         requestBody.put("weight", recommendation.getPet().getWeight());
         requestBody.put("height", recommendation.getPet().getHeight());
