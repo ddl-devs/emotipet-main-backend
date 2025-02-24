@@ -1,6 +1,7 @@
 package br.com.ifrn.ddldevs.pets_backend.repository;
 
 import br.com.ifrn.ddldevs.pets_backend.domain.PetAnalysis;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -19,5 +20,5 @@ public interface PetAnalysisRepository extends JpaRepository<PetAnalysis, Long> 
         AND (p.analysisStatus = 'COMPLETED')
         ORDER BY p.createdAt DESC
     """)
-    List<PetAnalysis> findRecentEmotionalAnalyses(@Param("petId") Long petId, @Param("oneMonthAgo") LocalDateTime oneMonthAgo);
+    List<PetAnalysis> findRecentEmotionalAnalyses(@Param("petId") Long petId, @Param("oneMonthAgo") LocalDateTime oneMonthAgo, Pageable pg);
 }

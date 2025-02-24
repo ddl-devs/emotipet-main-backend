@@ -7,6 +7,8 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -36,7 +38,6 @@ public class RecommendationRequestsService {
         headers.setContentType(MediaType.APPLICATION_JSON);
 
         HttpEntity<Map<String, Object>> request = new HttpEntity<>(requestBody, headers);
-
         try {
             String jsonResponse = restTemplate.postForObject(recommendationUrl + suffix, request, String.class);
 
@@ -56,6 +57,7 @@ public class RecommendationRequestsService {
         requestBody.put("breed", recommendation.getPet().getBreed());
         requestBody.put("weight", recommendation.getPet().getWeight());
         requestBody.put("age", recommendation.getPet().getAge());
+        requestBody.put("gender", recommendation.getPet().getGender());
         return requestBody;
     }
 
@@ -63,10 +65,10 @@ public class RecommendationRequestsService {
         Map<String, Object> requestBody = prepareCommonRequest(recommendation);
 
         LocalDateTime oneMonthAgo = LocalDateTime.now().minusMonths(1L);
+        Pageable pageable = PageRequest.of(0, 3);
         List<PetAnalysis> analyses = petAnalysisRepository.findRecentEmotionalAnalyses(
-                recommendation.getPet().getId(), oneMonthAgo
+                recommendation.getPet().getId(), oneMonthAgo, pageable
         );
-
         if (analyses != null && !analyses.isEmpty()) {
             List<Map<String, Object>> emotions = new ArrayList<>();
             DateTimeFormatter formatter = DateTimeFormatter.ISO_LOCAL_DATE_TIME;
@@ -93,6 +95,7 @@ public class RecommendationRequestsService {
         requestBody.put("breed", recommendation.getPet().getBreed());
         requestBody.put("weight", recommendation.getPet().getWeight());
         requestBody.put("height", recommendation.getPet().getHeight());
+        requestBody.put("gender", recommendation.getPet().getGender());
         return requestBody;
     }
 
