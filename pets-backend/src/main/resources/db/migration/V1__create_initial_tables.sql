@@ -15,7 +15,7 @@ CREATE TABLE pets (
     id BIGSERIAL PRIMARY KEY,
     name VARCHAR(128) NOT NULL,
     gender VARCHAR(255),
-    age INTEGER,
+    birthdate DATE,
     breed VARCHAR(128),
     species VARCHAR(255) NOT NULL,
     weight DECIMAL(10, 2),

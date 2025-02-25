@@ -11,6 +11,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.ArrayList;
 
 import java.util.List;
@@ -28,7 +29,7 @@ public class Pet extends BaseEntity {
     @Enumerated(EnumType.STRING)
     private Gender gender;
 
-    private Integer age;
+    private LocalDate birthdate;
 
     @Column(length = 128)
     private String breed;

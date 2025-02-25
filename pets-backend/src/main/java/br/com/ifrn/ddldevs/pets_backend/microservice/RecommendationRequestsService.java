@@ -56,7 +56,7 @@ public class RecommendationRequestsService {
         requestBody.put("species", recommendation.getPet().getSpecies());
         requestBody.put("breed", recommendation.getPet().getBreed());
         requestBody.put("weight", recommendation.getPet().getWeight());
-        requestBody.put("age", recommendation.getPet().getAge());
+        requestBody.put("age", recommendation.getPet().getBirthdate());
         requestBody.put("gender", recommendation.getPet().getGender());
         return requestBody;
     }

@@ -10,6 +10,8 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
+
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
@@ -24,10 +26,9 @@ public class PetUpdateRequestDTO {
     @Valid
     private Gender gender;
 
-    @Schema(description = "Pet's age", example = "2")
+    @Schema(description = "Pet's birthdate", example = "2")
     @Valid
-    @Min(0)
-    private Integer age;
+    private LocalDate birthdate;
 
     @Schema(description = "Pet's weight (kg)", example = "2.5")
     @Valid
