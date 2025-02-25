@@ -16,6 +16,7 @@ import br.com.ifrn.ddldevs.pets_backend.mapper.PetAnalysisMapper;
 import br.com.ifrn.ddldevs.pets_backend.repository.PetAnalysisRepository;
 import br.com.ifrn.ddldevs.pets_backend.repository.PetRepository;
 import br.com.ifrn.ddldevs.pets_backend.repository.UserRepository;
+import br.com.ifrn.ddldevs.pets_backend.service.UploadImageService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.transaction.Transactional;
 import java.math.BigDecimal;
@@ -24,13 +25,16 @@ import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mock;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
+import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers;
+import org.springframework.web.multipart.MultipartFile;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -48,6 +52,16 @@ class PetAnalysisControllerTest {
 
     @Autowired
     private UserRepository userRepository;
+
+    @Mock
+    private UploadImageService uploadImageService;
+
+    private final MultipartFile mockImage = new MockMultipartFile(
+        "photoUrl",
+        "image.jpg",
+        "image/jpeg",
+        "content".getBytes()
+    );
 
     @Autowired
     private PetRepository petRepository;
@@ -91,7 +105,7 @@ class PetAnalysisControllerTest {
     @Transactional
     public void createPetAnalysisSuccessfully() throws Exception {
         PetAnalysisRequestDTO requestDTO = new PetAnalysisRequestDTO(this.pet.getId(),
-            "http://example.com/picture.jpg", AnalysisType.BREED);
+            mockImage, AnalysisType.BREED);
         String requestBody = objectMapper.writeValueAsString(requestDTO);
 
         mockMvc.perform(post("/pet-analysis/")
