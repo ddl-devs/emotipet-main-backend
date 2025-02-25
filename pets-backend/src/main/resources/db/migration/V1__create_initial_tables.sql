@@ -42,7 +42,7 @@ CREATE TABLE pet_analisys (
 
 CREATE TABLE recommendations (
     id BIGSERIAL PRIMARY KEY,
-    recommendation TEXT NOT NULL,
+    recommendation TEXT,
     category_recommendation VARCHAR(64) NOT NULL,
     pet_id BIGINT NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

@@ -1,5 +1,6 @@
 package br.com.ifrn.ddldevs.pets_backend.domain;
 
+import br.com.ifrn.ddldevs.pets_backend.domain.Enums.RecommendationCategories;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -17,8 +18,8 @@ public class Recommendation extends BaseEntity {
     @Column(nullable = false)
     private String recommendation;
 
-    @Column(nullable = false, length = 64, name = "category_recommendation")
-    private String categoryRecommendation;
+    @Enumerated(EnumType.STRING)
+    private RecommendationCategories categoryRecommendation;
 
     @ManyToOne
     @JoinColumn(name = "pet_id", nullable = false)

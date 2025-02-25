@@ -14,6 +14,7 @@ public interface RecommendationMapper {
 
     @Mapping(target = "pet", ignore = true)
     @Mapping(target = "id", ignore = true)
+    @Mapping(target = "recommendation", ignore = true)
     Recommendation toEntity(RecommendationRequestDTO recommendationRequestDTO);
 
     List<RecommendationResponseDTO> toDTOList(List<Recommendation> recommendations);
