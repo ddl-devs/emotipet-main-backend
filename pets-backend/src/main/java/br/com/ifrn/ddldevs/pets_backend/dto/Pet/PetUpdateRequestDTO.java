@@ -8,6 +8,7 @@ import jakarta.validation.constraints.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -17,9 +18,10 @@ import java.time.LocalDate;
 @NoArgsConstructor
 @Schema(description = "DTO para atualização de Pets")
 public class PetUpdateRequestDTO {
+
     @Schema(description = "Pet's name", example = "Apolo")
     @Valid
-    @Size(min=1, message = "Pet's name can't be empty")
+    @Size(min = 1, message = "Pet's name can't be empty")
     private String name;
 
     @Schema(description = "Pet's sex", example = "MALE")
@@ -41,7 +43,7 @@ public class PetUpdateRequestDTO {
 
     @Schema(description = "Pet's breed", example = "Yorkshire")
     @Valid
-    @Size(min=1, message = "Pet's breed can't be empty")
+    @Size(min = 1, message = "Pet's breed can't be empty")
     private String breed;
 
     @Schema(description = "Pet's height (cm)", example = "30")
@@ -50,8 +52,7 @@ public class PetUpdateRequestDTO {
     private Integer height;
 
     @Schema(description = "Pet's photo", example = "www.foto.com")
-    @Size(min=1, message = "Photo url can't be empty")
     @Valid
-    private String photoUrl;
+    private MultipartFile photoUrl;
 
 }

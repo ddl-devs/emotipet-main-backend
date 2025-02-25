@@ -28,7 +28,6 @@ import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validation;
 import jakarta.validation.Validator;
 import jakarta.validation.ValidatorFactory;
-import jakarta.ws.rs.NotFoundException;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -48,8 +47,11 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.web.multipart.MultipartFile;
 
+@SpringBootTest
 @ActiveProfiles("test")
 class PetServiceTest {
 
@@ -63,12 +65,22 @@ class PetServiceTest {
     private PetMapper petMapper;
 
     @Mock
+    private UploadImageService uploadImageService;
+
+    @Mock
     private SqsTemplate sqsTemplate;
 
     @InjectMocks
     private PetService petService;
 
     private Validator validator;
+
+    private final MultipartFile mockImage = new MockMultipartFile(
+        "photoUrl",
+        "image.jpg",
+        "image/jpeg",
+        "content".getBytes()
+    );
 
     private final String loggedUserKeycloakId = "1abc23";
 

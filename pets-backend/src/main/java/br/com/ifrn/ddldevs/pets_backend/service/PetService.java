@@ -28,6 +28,9 @@ public class PetService {
     @Autowired
     private PetMapper petMapper;
 
+    @Autowired
+    private UploadImageService uploadImageService;
+
     @Transactional
     public PetResponseDTO createPet(PetRequestDTO petRequestDTO, String loggedUserKeycloakId) {
         Pet pet = petMapper.toEntity(petRequestDTO);
@@ -37,6 +40,15 @@ public class PetService {
 
         pet.setUser(user);
         user.getPets().add(pet);
+
+        String imgUrl = null;
+
+        if (petRequestDTO.getPhotoUrl() != null) {
+            imgUrl = uploadImageService.uploadImg(petRequestDTO.getPhotoUrl());
+
+        }
+
+        pet.setPhotoUrl(imgUrl);
 
         petRepository.save(pet);
         userRepository.save(user);
@@ -64,6 +76,12 @@ public class PetService {
         validatePetOwnershipOrAdmin(pet, loggedUserKeycloakId);
 
         petMapper.updateEntityFromDTO(petRequestDTO, pet);
+
+        if (petRequestDTO.getPhotoUrl() != null) {
+            String imgUrl = uploadImageService.uploadImg(petRequestDTO.getPhotoUrl());
+            pet.setPhotoUrl(imgUrl);
+        }
+        
         Pet petUpdated = petRepository.save(pet);
 
         return petMapper.toPetResponseDTO(petUpdated);
