@@ -22,7 +22,7 @@ public class PetAnalysisRequestDTO {
     private String picture;
 
     @NotNull
-    @Schema(description = "Type of the Analysis", example = "Blood Test")
+    @Schema(description = "Type of the Analysis", example = "EMOTIONAL")
     private AnalysisType analysisType;
 
 }

@@ -69,8 +69,8 @@ public class RecommendationRequestsService {
         List<PetAnalysis> analyses = petAnalysisRepository.findRecentEmotionalAnalyses(
                 recommendation.getPet().getId(), oneMonthAgo, pageable
         );
+        List<Map<String, Object>> emotions = new ArrayList<>();
         if (analyses != null && !analyses.isEmpty()) {
-            List<Map<String, Object>> emotions = new ArrayList<>();
             DateTimeFormatter formatter = DateTimeFormatter.ISO_LOCAL_DATE_TIME;
 
             for (PetAnalysis analysis : analyses) {
@@ -83,8 +83,8 @@ public class RecommendationRequestsService {
 
                 emotions.add(emotionData);
             }
-            requestBody.put("emotions", emotions);
         }
+        requestBody.put("emotions", emotions);
 
         return requestBody;
     }
