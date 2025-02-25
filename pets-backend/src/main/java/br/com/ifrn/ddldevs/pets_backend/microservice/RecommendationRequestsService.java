@@ -56,7 +56,7 @@ public class RecommendationRequestsService {
         requestBody.put("species", recommendation.getPet().getSpecies());
         requestBody.put("breed", recommendation.getPet().getBreed());
         requestBody.put("weight", recommendation.getPet().getWeight());
-        requestBody.put("age", recommendation.getPet().getAge());
+        requestBody.put("age", recommendation.getPet().getBirthdate());
         requestBody.put("gender", recommendation.getPet().getGender());
         return requestBody;
     }
@@ -69,8 +69,8 @@ public class RecommendationRequestsService {
         List<PetAnalysis> analyses = petAnalysisRepository.findRecentEmotionalAnalyses(
                 recommendation.getPet().getId(), oneMonthAgo, pageable
         );
+        List<Map<String, Object>> emotions = new ArrayList<>();
         if (analyses != null && !analyses.isEmpty()) {
-            List<Map<String, Object>> emotions = new ArrayList<>();
             DateTimeFormatter formatter = DateTimeFormatter.ISO_LOCAL_DATE_TIME;
 
             for (PetAnalysis analysis : analyses) {
@@ -83,8 +83,8 @@ public class RecommendationRequestsService {
 
                 emotions.add(emotionData);
             }
-            requestBody.put("emotions", emotions);
         }
+        requestBody.put("emotions", emotions);
 
         return requestBody;
     }

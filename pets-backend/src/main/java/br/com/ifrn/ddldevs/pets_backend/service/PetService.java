@@ -31,7 +31,8 @@ public class PetService {
     @Transactional
     public PetResponseDTO createPet(PetRequestDTO petRequestDTO, String loggedUserKeycloakId) {
         Pet pet = petMapper.toEntity(petRequestDTO);
-
+        System.out.println(petRequestDTO.getBirthdate());
+        System.out.println(pet.getBirthdate());
         var user = userRepository.findByKeycloakId(loggedUserKeycloakId).orElseThrow(() -> {
             throw new ResourceNotFoundException("Usuário não encontrado!");
         });

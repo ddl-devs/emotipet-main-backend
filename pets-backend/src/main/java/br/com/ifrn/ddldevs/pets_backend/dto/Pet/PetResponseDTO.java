@@ -5,6 +5,7 @@ import br.com.ifrn.ddldevs.pets_backend.domain.Enums.Species;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 public record PetResponseDTO(
@@ -12,8 +13,8 @@ public record PetResponseDTO(
         @Schema(description = "Date and time of Pet creation", example = "2024-12-05T14:30:00Z") LocalDateTime createdAt,
         @Schema(description = "Date and time the Pet was last updated", example = "2024-12-05T14:30:00Z") LocalDateTime updatedAt,
         @Schema(description = "Pet's name", example = "Apolo")String name,
-        @Schema(description = "Pet's sex", example = "MALE")Gender gender,
-        @Schema(description = "Pet's age", example = "2")Integer age,
+        @Schema(description = "Pet's sex", example = "MALE") Gender gender,
+        @Schema(description = "Pet's birthdate", example = "2024-12-05") LocalDate birthdate,
         @Schema(description = "Pet's weight (kg)", example = "2.5") BigDecimal weight,
         @Schema(description = "Pet's breed", example = "Yorkshire")String breed,
         @Schema(description = "Pet's species", example = "Dog") Species species,

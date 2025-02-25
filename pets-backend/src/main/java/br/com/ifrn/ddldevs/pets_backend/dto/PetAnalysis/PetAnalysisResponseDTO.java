@@ -13,6 +13,6 @@ public record PetAnalysisResponseDTO(
         @Schema(description = "Picture URL", example = "http://example.com/pet-analysis/picture.jpg") String picture,
         @Schema(description = "Result of the Analysis", example = "Healthy") String result,
         @Schema(description = "Result of the Analysis", example = "93.212831") Double accuracy,
-        @Schema(description = "Type of the Analysis", example = "Blood Test") AnalysisType analysisType,
-        @Schema(description = "Status of the Analysis", example = "Blood Test") AnalysisStatus analysisStatus
+        @Schema(description = "Type of the Analysis", example = "EMOTIONAL") AnalysisType analysisType,
+        @Schema(description = "Status of the Analysis", example = "IN_ANA") AnalysisStatus analysisStatus
 ) {}

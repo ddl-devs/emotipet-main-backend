@@ -3,6 +3,8 @@ package br.com.ifrn.ddldevs.pets_backend.service;
 
 import br.com.ifrn.ddldevs.pets_backend.amazonSqs.AnalysisMessage;
 import br.com.ifrn.ddldevs.pets_backend.amazonSqs.SQSSenderService;
+import br.com.ifrn.ddldevs.pets_backend.domain.Enums.AnalysisType;
+import br.com.ifrn.ddldevs.pets_backend.domain.Enums.Species;
 import br.com.ifrn.ddldevs.pets_backend.domain.Pet;
 import br.com.ifrn.ddldevs.pets_backend.domain.PetAnalysis;
 import br.com.ifrn.ddldevs.pets_backend.dto.PetAnalysis.PetAnalysisRequestDTO;
@@ -61,10 +63,14 @@ public class PetAnalysisService {
         petAnalysisRepository.save(petAnalysis);
         petRepository.save(pet);
 
+        String analysisType;
+
+        analysisType = pet.getSpecies() + "_" + petAnalysis.getAnalysisType();
+
         AnalysisMessage message = new AnalysisMessage(
                 petAnalysis.getId(),
                 petAnalysis.getPicture(),
-                petAnalysis.getAnalysisType()
+                analysisType
         );
         senderService.sendMessage(message);
 

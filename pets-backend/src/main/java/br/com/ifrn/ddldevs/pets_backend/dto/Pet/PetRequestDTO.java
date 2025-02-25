@@ -4,12 +4,11 @@ import br.com.ifrn.ddldevs.pets_backend.domain.Enums.Gender;
 import br.com.ifrn.ddldevs.pets_backend.domain.Enums.Species;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.Min;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Positive;
-import jakarta.validation.constraints.Size;
+import jakarta.validation.constraints.*;
+
 import java.math.BigDecimal;
+import java.time.LocalDate;
+
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -30,9 +29,10 @@ public class PetRequestDTO {
     @Valid
     private Gender gender;
 
-    @Schema(description = "Pet's age", example = "2")
-    @Min(0)
-    private Integer age;
+    @Schema(description = "Pet's birthdate", example = "2024-12-05")
+    @PastOrPresent
+    @Valid
+    private LocalDate birthdate;
 
     @Schema(description = "Pet's weight (kg)", example = "2.5")
     @Valid
