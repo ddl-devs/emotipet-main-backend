@@ -41,7 +41,9 @@ import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.web.multipart.MultipartFile;
 
 @SpringBootTest
 @ActiveProfiles("test")
@@ -59,9 +61,19 @@ public class UserServiceTest {
     @Mock
     private UserMapper userMapper;
 
+    @Mock
+    private UploadImageService uploadImageService;
+
     private Validator validator;
 
     private final String loggedUserKeycloakId = "1abc23";
+
+    private final MultipartFile mockImage = new MockMultipartFile(
+        "photoUrl",
+        "image.jpg",
+        "image/jpeg",
+        "content".getBytes()
+    );
 
     @InjectMocks
     UserService userService;
@@ -82,7 +94,7 @@ public class UserServiceTest {
             "john", "john@email.com",
             "John", "Doe",
             LocalDate.of(1990, 1, 15),
-            "aws.12bs.bucket.com", "user!123"
+            mockImage, "user!123"
         );
 
         Set<ConstraintViolation<UserRequestDTO>> violations =
@@ -97,7 +109,7 @@ public class UserServiceTest {
             "john",
             null, null, null,
             LocalDate.of(1990, 1, 15),
-            "aws.12bs.bucket.com", null
+            mockImage, null
         );
 
         Set<ConstraintViolation<UserRequestDTO>> violations =
@@ -113,7 +125,7 @@ public class UserServiceTest {
             "john", "john123email.com",
             "John", "Doe",
             LocalDate.of(1990, 1, 15),
-            "aws.12bs.bucket.com", "user!123"
+            mockImage, "user!123"
         );
 
         Set<ConstraintViolation<UserRequestDTO>> violations =
@@ -156,7 +168,7 @@ public class UserServiceTest {
             "john", "john@email.com",
             "John", "Doe",
             LocalDate.of(2015, 1, 15),
-            "aws.12bs.bucket.com", "user!123"
+            mockImage, "user!123"
         );
 
         Set<ConstraintViolation<UserRequestDTO>> violations =
@@ -176,7 +188,7 @@ public class UserServiceTest {
             "john@email.com",
             "John", "Doe",
             LocalDate.of(1990, 1, 15),
-            "aws.12bs.bucket.com"
+            mockImage
         );
 
         assertThrows(IllegalArgumentException.class,
@@ -190,7 +202,7 @@ public class UserServiceTest {
             "john@email.com",
             "John", "Doe",
             LocalDate.of(1990, 1, 15),
-            "aws.12bs.bucket.com"
+            mockImage
         );
 
         assertThrows(IllegalArgumentException.class,
@@ -294,7 +306,7 @@ public class UserServiceTest {
             user.getFirstName(),
             user.getLastName(),
             user.getDateOfBirth(),
-            user.getPhotoUrl(),
+            mockImage,
             "abc123"
         );
 
@@ -416,7 +428,7 @@ public class UserServiceTest {
         petResponses.add(petResponse2);
 
         when(petMapper.toDTOList(user.getPets())).thenReturn(petResponses);
-        List<PetResponseDTO> response = userService.getPets("123");
+        List<PetResponseDTO> response = userService.getPets("1abc23");
 
         verify(userRepository, times(1)).findById(1L);
         verify(petMapper, times(1)).toDTOList(user.getPets());
@@ -454,7 +466,7 @@ public class UserServiceTest {
             "jhon updated",
             "doe updated",
             user.getDateOfBirth(),
-            "www.newphoto.url"
+            mockImage
         );
 
         KcUserResponseDTO kcUserResponseDTO = new KcUserResponseDTO(
@@ -475,7 +487,7 @@ public class UserServiceTest {
             kcUserResponseDTO.firstName(),
             kcUserResponseDTO.lastName(),
             userRequestDTO.dateOfBirth(),
-            userRequestDTO.photoUrl()
+            userRequestDTO.photoUrl().toString()
         );
 
         // Mock: Simulação dos Comportamentos
@@ -489,7 +501,7 @@ public class UserServiceTest {
             user.setLastName(kcUserResponseDTO.lastName());
             user.setEmail(kcUserResponseDTO.email());
             user.setDateOfBirth(userRequestDTO.dateOfBirth());
-            user.setPhotoUrl(userRequestDTO.photoUrl());
+            user.setPhotoUrl(userRequestDTO.photoUrl().toString());
             return null;
         }).when(userMapper).updateEntityFromDTO(userRequestDTO, user);
         when(userRepository.save(user)).thenReturn(user);
