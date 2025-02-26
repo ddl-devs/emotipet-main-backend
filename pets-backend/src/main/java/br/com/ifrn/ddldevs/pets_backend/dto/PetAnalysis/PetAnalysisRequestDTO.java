@@ -3,6 +3,7 @@ package br.com.ifrn.ddldevs.pets_backend.dto.PetAnalysis;
 import br.com.ifrn.ddldevs.pets_backend.domain.Enums.AnalysisType;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.*;
 
@@ -17,10 +18,12 @@ public class PetAnalysisRequestDTO {
     @Valid
     private Long petId;
 
-    @NotNull
+    @Valid
+    @NotBlank
     @Schema(description = "Picture URL", example = "http://example.com/pet-analysis/picture.jpg")
     private String picture;
 
+    @Valid
     @NotNull
     @Schema(description = "Type of the Analysis", example = "EMOTIONAL")
     private AnalysisType analysisType;

@@ -132,7 +132,7 @@ public class PetAnalysisService {
         return petAnalysisMapper.toResponse(petAnalysis);
     }
 
-    private void validatePetOwnershipOrAdmin(Pet pet, String loggedUserKeycloakId) {
+    public void validatePetOwnershipOrAdmin(Pet pet, String loggedUserKeycloakId) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
 
         if (authentication.getAuthorities().stream()
