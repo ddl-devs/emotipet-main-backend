@@ -4,10 +4,8 @@ import br.com.ifrn.ddldevs.pets_backend.amazonSqs.AnalysisMessage;
 import br.com.ifrn.ddldevs.pets_backend.amazonSqs.SQSSenderService;
 import br.com.ifrn.ddldevs.pets_backend.domain.Enums.AnalysisStatus;
 import br.com.ifrn.ddldevs.pets_backend.domain.Enums.AnalysisType;
-import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 import br.com.ifrn.ddldevs.pets_backend.domain.Enums.Species;
@@ -19,25 +17,42 @@ import static org.mockito.Mockito.when;
 import br.com.ifrn.ddldevs.pets_backend.domain.Pet;
 import br.com.ifrn.ddldevs.pets_backend.domain.PetAnalysis;
 import br.com.ifrn.ddldevs.pets_backend.domain.User;
+import br.com.ifrn.ddldevs.pets_backend.dto.Pet.PetUpdateRequestDTO;
 import br.com.ifrn.ddldevs.pets_backend.dto.PetAnalysis.PetAnalysisRequestDTO;
 import br.com.ifrn.ddldevs.pets_backend.dto.PetAnalysis.PetAnalysisResponseDTO;
+import br.com.ifrn.ddldevs.pets_backend.exception.AccessDeniedException;
 import br.com.ifrn.ddldevs.pets_backend.mapper.PetAnalysisMapper;
 import br.com.ifrn.ddldevs.pets_backend.repository.PetAnalysisRepository;
 import br.com.ifrn.ddldevs.pets_backend.repository.PetRepository;
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.exc.InvalidFormatException;
 import io.awspring.cloud.sqs.operations.SqsTemplate;
+import jakarta.validation.ConstraintViolation;
+import jakarta.validation.Validation;
+import jakarta.validation.Validator;
+import jakarta.validation.ValidatorFactory;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
+import org.mockito.Spy;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.context.SecurityContext;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
@@ -59,15 +74,33 @@ class PetAnalysisServiceTest {
 
     private final String loggedUserKeycloakId = "1abc23";
 
+    private Validator validator;
+
     @MockitoBean
     private SqsTemplate sqsTemplate;
 
     @MockitoBean
     private SQSSenderService sqsSenderService;
 
+    @Autowired
+    private RecommendationService recommendationService;
+
+    public PetAnalysisServiceTest(){
+        ValidatorFactory factory = Validation.buildDefaultValidatorFactory();
+        validator = factory.getValidator();
+    }
+
     @BeforeEach
     void setUp() {
         MockitoAnnotations.openMocks(this);
+        SecurityContext securityContext = SecurityContextHolder.createEmptyContext();
+        Authentication authentication = new UsernamePasswordAuthenticationToken(
+                "jhon",
+                null,
+                List.of(new SimpleGrantedAuthority("ROLE_user"))
+        );
+        securityContext.setAuthentication(authentication);
+        SecurityContextHolder.setContext(securityContext);
     }
 
     @Test
@@ -93,15 +126,17 @@ class PetAnalysisServiceTest {
 
         AnalysisMessage analysisMessage = new AnalysisMessage(1L, "http", "DOG_BREED");
 
-        when(petRepository.findById(1L)).thenReturn(Optional.of(pet));
         when(petAnalysisMapper.toEntity(requestDTO)).thenReturn(petAnalysis);
         when(petAnalysisRepository.save(petAnalysis)).thenReturn(petAnalysis);
         when(petAnalysisMapper.toResponse(petAnalysis)).thenReturn(responseDTO);
+        when(petRepository.findById(1L)).thenReturn(Optional.of(pet));
         doNothing().when(sqsSenderService).sendMessage(analysisMessage);
 
         PetAnalysisResponseDTO result = petAnalysisService.createPetAnalysis(requestDTO,
             loggedUserKeycloakId);
 
+        PetAnalysisService analysisSpy = spy(petAnalysisService);
+        assertDoesNotThrow(() -> petAnalysisService.validatePetOwnershipOrAdmin(pet, user.getKeycloakId()));
         assertNotNull(result);
         assertEquals("http://example.com/picture.jpg", result.picture());
         assertEquals("Healthy", result.result());
@@ -115,7 +150,7 @@ class PetAnalysisServiceTest {
     void createPetAnalysisWithInvalidPet() {
         PetAnalysisRequestDTO requestDTO = new PetAnalysisRequestDTO(-1L, "http://example.com/picture.jpg", AnalysisType.BREED);
 
-        when(petRepository.findById(999L)).thenReturn(Optional.empty());
+        when(petRepository.findById(any())).thenReturn(Optional.empty());
 
         RuntimeException exception = assertThrows(RuntimeException.class,
             () -> petAnalysisService.createPetAnalysis(requestDTO, loggedUserKeycloakId));
@@ -132,6 +167,74 @@ class PetAnalysisServiceTest {
         assertThrows(IllegalArgumentException.class,
             () -> petAnalysisService.createPetAnalysis(requestDTO, loggedUserKeycloakId),
             "ID não pode ser nulo");
+    }
+
+    @Test
+    void shouldNotCreateWhenUserNotOwner(){
+        User user = new User();
+        user.setId(1L);
+        user.setUsername("jhon");
+        user.setFirstName("Jhon");
+        user.setEmail("jhon@gmail.com");
+        user.setKeycloakId(loggedUserKeycloakId);
+
+        Pet pet = new Pet();
+        pet.setId(1L);
+        pet.setName("Apolo");
+        pet.setSpecies(Species.DOG);
+        pet.setHeight(30);
+        pet.setWeight(BigDecimal.valueOf(10.0));
+        pet.setUser(user);
+
+        PetAnalysisRequestDTO requestDTO = new PetAnalysisRequestDTO(1L, "http://example.com/picture.jpg", AnalysisType.BREED);
+        PetAnalysis petAnalysis = new PetAnalysis();
+        PetAnalysisResponseDTO responseDTO = new PetAnalysisResponseDTO(1L, LocalDateTime.now(),  LocalDateTime.now(),"http://example.com/picture.jpg", "Healthy", 83.24,AnalysisType.BREED, AnalysisStatus.COMPLETED);
+
+        AnalysisMessage analysisMessage = new AnalysisMessage(1L, "http", "DOG_BREED");
+
+        when(petAnalysisMapper.toEntity(requestDTO)).thenReturn(petAnalysis);
+        when(petAnalysisRepository.save(petAnalysis)).thenReturn(petAnalysis);
+        when(petAnalysisMapper.toResponse(petAnalysis)).thenReturn(responseDTO);
+        when(petRepository.findById(1L)).thenReturn(Optional.of(pet));
+        doNothing().when(sqsSenderService).sendMessage(analysisMessage);
+
+        PetAnalysisResponseDTO result = petAnalysisService.createPetAnalysis(requestDTO,
+                loggedUserKeycloakId);
+
+        assertThrows(
+                AccessDeniedException.class,
+                () -> petAnalysisService.createPetAnalysis(requestDTO, "NotOwner")
+        );
+    }
+
+    @Test
+    void shouldNotCreateWithInvalidAnalysisType() {
+        ObjectMapper objectMapper = new ObjectMapper();
+        String invalidJson = """
+            {
+                "petId": 1,
+                "analysisType": "UKNOWN",
+                "picture": "www.example.com/picture.jpg"
+            }
+        """;
+
+        InvalidFormatException exception = assertThrows(
+                InvalidFormatException.class,
+                () -> objectMapper.readValue(invalidJson, PetAnalysisRequestDTO.class)
+        );
+        String errorMessage = exception.getMessage();
+        assertTrue(
+                errorMessage.contains("not one of the values accepted for Enum class: [BREED, EMOTIONAL]")
+        );
+    }
+
+    @Test
+    void shouldNotCreateWithUrlEmpty() {
+        PetAnalysisRequestDTO dto = new PetAnalysisRequestDTO(1L, "", AnalysisType.BREED);
+
+        Set<ConstraintViolation<PetAnalysisRequestDTO>> violations = validator.validate(dto);
+        assertFalse(violations.isEmpty());
+        assertEquals(1, violations.size());
     }
 
     // b
@@ -182,7 +285,40 @@ class PetAnalysisServiceTest {
             "ID não pode ser negativo");
     }
 
-    // d
+    @Test
+    void shouldNotDeleteWhenNotOwner(){
+        User user = new User();
+        user.setId(1L);
+        user.setUsername("jhon");
+        user.setFirstName("Jhon");
+        user.setEmail("jhon@gmail.com");
+        user.setKeycloakId(loggedUserKeycloakId);
+
+        Pet pet = new Pet();
+        pet.setId(2L);
+        pet.setName("Apolo");
+        pet.setSpecies(Species.DOG);
+        pet.setHeight(30);
+        pet.setWeight(BigDecimal.valueOf(10.0));
+        pet.setUser(user);
+
+        PetAnalysis petAnalysis = new PetAnalysis();
+        petAnalysis.setId(1L);
+        petAnalysis.setPet(pet);
+        petAnalysis.setPicture("http://example.com/picture.jpg");
+        petAnalysis.setResult("Healthy");
+        petAnalysis.setAnalysisType(AnalysisType.BREED);
+
+        when(petAnalysisRepository.findById(1L)).thenReturn(Optional.of(petAnalysis));
+        when(petAnalysisRepository.existsById(1L)).thenReturn(true);
+
+        assertThrows(
+                AccessDeniedException.class,
+                () -> petAnalysisService.deletePetAnalysis(1L, "NotOwner")
+        );
+    }
+
+    // c
 
     @Test
     void getPetAnalysesByPetIdWithValidId() {
@@ -214,6 +350,7 @@ class PetAnalysisServiceTest {
 
         when(petAnalysisRepository.findAllByPetId(1L)).thenReturn(analyses);
         when(petAnalysisMapper.toResponseList(analyses)).thenReturn(new ArrayList<>());
+        when(petRepository.findById(1L)).thenReturn(Optional.of(pet));
 
         List<PetAnalysisResponseDTO> response = petAnalysisService.getAllByPetId(1L,
             loggedUserKeycloakId);
@@ -236,7 +373,33 @@ class PetAnalysisServiceTest {
             "ID não pode ser nulo");
     }
 
-    // e
+    @Test
+    void shouldNotGetAnalysisByPetWhenNotOwner() {
+        User user = new User();
+        user.setId(1L);
+        user.setUsername("jhon");
+        user.setFirstName("Jhon");
+        user.setEmail("jhon@gmail.com");
+        user.setKeycloakId(loggedUserKeycloakId);
+
+        Pet pet = new Pet();
+        pet.setId(1L);
+        pet.setName("Apolo");
+        pet.setSpecies(Species.DOG);
+        pet.setHeight(30);
+        pet.setWeight(BigDecimal.valueOf(10.0));
+        pet.setUser(user);
+
+        when(petRepository.findById(1L)).thenReturn(Optional.of(pet));
+
+        assertThrows(
+                AccessDeniedException.class,
+                () -> petAnalysisService.getAllByPetId(1L, "NotOwner")
+        );
+
+    }
+
+    // d
 
     @Test
     void getPetAnalysesWithValidId() {
@@ -257,7 +420,7 @@ class PetAnalysisServiceTest {
 
         PetAnalysis analyses = new PetAnalysis();
         analyses.setId(1L);
-        analyses.setPet(new Pet());
+        analyses.setPet(pet);
         analyses.setAnalysisType(AnalysisType.BREED);
         analyses.setResult("Healthy");
         analyses.setPicture("http://example.com/picture.jpg");
@@ -290,5 +453,42 @@ class PetAnalysisServiceTest {
         assertThrows(IllegalArgumentException.class,
             () -> petAnalysisService.getAllByPetId(null, loggedUserKeycloakId),
             "ID não pode ser nulo");
+    }
+
+    @Test
+    void shouldNotGetPetAnalysisWhenNotOwner() {
+        User user = new User();
+        user.setId(1L);
+        user.setUsername("jhon");
+        user.setFirstName("Jhon");
+        user.setEmail("jhon@gmail.com");
+        user.setKeycloakId(loggedUserKeycloakId);
+
+        Pet pet = new Pet();
+        pet.setId(1L);
+        pet.setName("Apolo");
+        pet.setSpecies(Species.DOG);
+        pet.setHeight(30);
+        pet.setWeight(BigDecimal.valueOf(10.0));
+        pet.setUser(user);
+
+        PetAnalysis analyses = new PetAnalysis();
+        analyses.setId(1L);
+        analyses.setPet(pet);
+        analyses.setAnalysisType(AnalysisType.BREED);
+        analyses.setResult("Healthy");
+        analyses.setPicture("http://example.com/picture.jpg");
+
+        PetAnalysisResponseDTO responseDTO = new PetAnalysisResponseDTO(
+                1L, LocalDateTime.now(), LocalDateTime.now(), "http://example.com/picture.jpg",
+                "Healthy", 90.0,AnalysisType.BREED, AnalysisStatus.COMPLETED);
+
+        when(petAnalysisRepository.findById(1L)).thenReturn(Optional.of(analyses));
+        when(petAnalysisMapper.toResponse(analyses)).thenReturn(responseDTO);
+
+        assertThrows(
+                AccessDeniedException.class,
+                () -> petAnalysisService.getPetAnalysis(1L, "NotOwner")
+        );
     }
 }
