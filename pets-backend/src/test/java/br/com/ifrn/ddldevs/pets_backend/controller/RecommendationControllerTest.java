@@ -7,6 +7,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 
+import br.com.ifrn.ddldevs.pets_backend.domain.Enums.RecommendationCategories;
 import br.com.ifrn.ddldevs.pets_backend.domain.Enums.Species;
 import br.com.ifrn.ddldevs.pets_backend.domain.Pet;
 import br.com.ifrn.ddldevs.pets_backend.domain.Recommendation;
@@ -92,8 +93,7 @@ class RecommendationControllerTest {
     @DisplayName("Should create an recommendation successfully")
     @Transactional
     public void createRecommendationSuccessfully() throws Exception {
-        RecommendationRequestDTO requestDTO = new RecommendationRequestDTO(this.pet.getId(),
-            "Feed your pet twice daily", "Nutrition");
+        RecommendationRequestDTO requestDTO = new RecommendationRequestDTO(this.pet.getId(), RecommendationCategories.HEALTH);
 
         String requestBody = objectMapper.writeValueAsString(requestDTO);
 
@@ -116,7 +116,7 @@ class RecommendationControllerTest {
         Recommendation recommendation = new Recommendation();
         recommendation.setPet(this.pet);
         recommendation.setRecommendation("Feed your pet twice daily");
-        recommendation.setCategoryRecommendation("Nutrition");
+        recommendation.setCategoryRecommendation(RecommendationCategories.HEALTH);
         recommendation.setCreatedAt(LocalDateTime.now());
 
         recommendation = recommendationRepository.save(recommendation);
@@ -137,7 +137,7 @@ class RecommendationControllerTest {
         Recommendation recommendation = new Recommendation();
         recommendation.setPet(this.pet);
         recommendation.setRecommendation("Feed your pet twice daily");
-        recommendation.setCategoryRecommendation("Nutrition");
+        recommendation.setCategoryRecommendation(RecommendationCategories.HEALTH);
         recommendation.setCreatedAt(LocalDateTime.now());
         recommendation = recommendationRepository.save(recommendation);
 
@@ -157,14 +157,14 @@ class RecommendationControllerTest {
         Recommendation recommendation = new Recommendation();
         recommendation.setPet(this.pet);
         recommendation.setRecommendation("Feed your pet twice daily");
-        recommendation.setCategoryRecommendation("Nutrition");
+        recommendation.setCategoryRecommendation(RecommendationCategories.HEALTH);
         recommendation.setCreatedAt(LocalDateTime.now());
         recommendation = recommendationRepository.save(recommendation);
 
         Recommendation recommendation2 = new Recommendation();
         recommendation2.setPet(this.pet);
         recommendation2.setRecommendation("Feed your pet once daily");
-        recommendation2.setCategoryRecommendation("Nutrition");
+        recommendation2.setCategoryRecommendation(RecommendationCategories.HEALTH);
         recommendation2.setCreatedAt(LocalDateTime.now());
         recommendation2 = recommendationRepository.save(recommendation2);
 
@@ -188,14 +188,14 @@ class RecommendationControllerTest {
         Recommendation recommendation = new Recommendation();
         recommendation.setPet(this.pet);
         recommendation.setRecommendation("Feed your pet twice daily");
-        recommendation.setCategoryRecommendation("Nutrition");
+        recommendation.setCategoryRecommendation(RecommendationCategories.HEALTH);
         recommendation.setCreatedAt(LocalDateTime.now());
         recommendation = recommendationRepository.save(recommendation);
 
         Recommendation recommendation2 = new Recommendation();
         recommendation2.setPet(this.pet);
         recommendation2.setRecommendation("Feed your pet once daily");
-        recommendation2.setCategoryRecommendation("Nutrition");
+        recommendation2.setCategoryRecommendation(RecommendationCategories.HEALTH);
         recommendation2.setCreatedAt(LocalDateTime.now());
         recommendation2 = recommendationRepository.save(recommendation2);
 

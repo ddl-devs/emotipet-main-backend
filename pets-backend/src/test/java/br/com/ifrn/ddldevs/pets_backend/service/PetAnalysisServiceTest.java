@@ -80,11 +80,11 @@ class PetAnalysisServiceTest {
         pet.setWeight(BigDecimal.valueOf(10.0));
         pet.setUser(user);
 
-        PetAnalysisRequestDTO requestDTO = new PetAnalysisRequestDTO(1L, "http://example.com/picture.jpg", AnalysisType.DOG_BREED);
+        PetAnalysisRequestDTO requestDTO = new PetAnalysisRequestDTO(1L, "http://example.com/picture.jpg", AnalysisType.BREED);
         PetAnalysis petAnalysis = new PetAnalysis();
-        PetAnalysisResponseDTO responseDTO = new PetAnalysisResponseDTO(1L, LocalDateTime.now(),  LocalDateTime.now(),"http://example.com/picture.jpg", "Healthy", 83.24,AnalysisType.DOG_BREED, AnalysisStatus.COMPLETED);
+        PetAnalysisResponseDTO responseDTO = new PetAnalysisResponseDTO(1L, LocalDateTime.now(),  LocalDateTime.now(),"http://example.com/picture.jpg", "Healthy", 83.24,AnalysisType.BREED, AnalysisStatus.COMPLETED);
 
-        AnalysisMessage analysisMessage = new AnalysisMessage(1L, "http", AnalysisType.DOG_BREED);
+        AnalysisMessage analysisMessage = new AnalysisMessage(1L, "http", "DOG_BREED");
 
         when(petRepository.findById(1L)).thenReturn(Optional.of(pet));
         when(petAnalysisMapper.toEntity(requestDTO)).thenReturn(petAnalysis);
@@ -98,7 +98,7 @@ class PetAnalysisServiceTest {
         assertNotNull(result);
         assertEquals("http://example.com/picture.jpg", result.picture());
         assertEquals("Healthy", result.result());
-        assertEquals(AnalysisType.DOG_BREED, result.analysisType());
+        assertEquals(AnalysisType.BREED, result.analysisType());
 
         verify(petRepository).findById(1L);
         verify(petAnalysisRepository).save(petAnalysis);
@@ -106,7 +106,7 @@ class PetAnalysisServiceTest {
 
     @Test
     void createPetAnalysisWithInvalidPet() {
-        PetAnalysisRequestDTO requestDTO = new PetAnalysisRequestDTO(-1L, "http://example.com/picture.jpg", AnalysisType.DOG_BREED);
+        PetAnalysisRequestDTO requestDTO = new PetAnalysisRequestDTO(-1L, "http://example.com/picture.jpg", AnalysisType.BREED);
 
         when(petRepository.findById(999L)).thenReturn(Optional.empty());
 
@@ -120,7 +120,7 @@ class PetAnalysisServiceTest {
 
     @Test
     void createPetAnalysisWithNullPet() {
-        PetAnalysisRequestDTO requestDTO = new PetAnalysisRequestDTO(-1L, "http://example.com/picture.jpg", AnalysisType.DOG_BREED);
+        PetAnalysisRequestDTO requestDTO = new PetAnalysisRequestDTO(-1L, "http://example.com/picture.jpg", AnalysisType.BREED);
 
         assertThrows(IllegalArgumentException.class,
             () -> petAnalysisService.createPetAnalysis(requestDTO, loggedUserKeycloakId),
@@ -151,7 +151,7 @@ class PetAnalysisServiceTest {
         petAnalysis.setPet(pet);
         petAnalysis.setPicture("http://example.com/picture.jpg");
         petAnalysis.setResult("Healthy");
-        petAnalysis.setAnalysisType(AnalysisType.DOG_BREED);
+        petAnalysis.setAnalysisType(AnalysisType.BREED);
 
         when(petAnalysisRepository.findById(1L)).thenReturn(Optional.of(petAnalysis));
         when(petAnalysisRepository.existsById(1L)).thenReturn(true);
@@ -199,7 +199,7 @@ class PetAnalysisServiceTest {
         PetAnalysis analyse = new PetAnalysis();
         analyse.setId(1L);
         analyse.setPet(pet);
-        analyse.setAnalysisType(AnalysisType.DOG_BREED);
+        analyse.setAnalysisType(AnalysisType.BREED);
         analyse.setResult("Healthy");
         analyse.setPicture("http://example.com/picture.jpg");
 
@@ -251,13 +251,13 @@ class PetAnalysisServiceTest {
         PetAnalysis analyses = new PetAnalysis();
         analyses.setId(1L);
         analyses.setPet(new Pet());
-        analyses.setAnalysisType(AnalysisType.DOG_BREED);
+        analyses.setAnalysisType(AnalysisType.BREED);
         analyses.setResult("Healthy");
         analyses.setPicture("http://example.com/picture.jpg");
 
         PetAnalysisResponseDTO responseDTO = new PetAnalysisResponseDTO(
                 1L, LocalDateTime.now(), LocalDateTime.now(), "http://example.com/picture.jpg",
-                "Healthy", 90.0,AnalysisType.DOG_BREED, AnalysisStatus.COMPLETED);
+                "Healthy", 90.0,AnalysisType.BREED, AnalysisStatus.COMPLETED);
 
         when(petAnalysisRepository.findById(1L)).thenReturn(Optional.of(analyses));
         when(petAnalysisMapper.toResponse(analyses)).thenReturn(responseDTO);

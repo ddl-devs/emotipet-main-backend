@@ -9,5 +9,5 @@ import lombok.Data;
 public class AnalysisMessage {
     private Long analysisId;
     private String imageUrl;
-    private AnalysisType analysisType;
+    private String analysisType;
 }
