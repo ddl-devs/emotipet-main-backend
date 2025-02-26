@@ -23,6 +23,7 @@ import br.com.ifrn.ddldevs.pets_backend.repository.PetRepository;
 import br.com.ifrn.ddldevs.pets_backend.repository.UserRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.exc.InvalidFormatException;
+import io.awspring.cloud.sqs.operations.SqsTemplate;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validation;
 import jakarta.validation.Validator;
@@ -49,7 +50,6 @@ import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.context.ActiveProfiles;
 
-@SpringBootTest
 @ActiveProfiles("test")
 class PetServiceTest {
 
@@ -61,6 +61,9 @@ class PetServiceTest {
 
     @Mock
     private PetMapper petMapper;
+
+    @Mock
+    private SqsTemplate sqsTemplate;
 
     @InjectMocks
     private PetService petService;

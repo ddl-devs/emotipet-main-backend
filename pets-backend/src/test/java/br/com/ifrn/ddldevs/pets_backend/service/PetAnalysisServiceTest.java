@@ -29,13 +29,17 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+
+import io.awspring.cloud.sqs.operations.SqsTemplate;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 @SpringBootTest
 @ActiveProfiles("test")
@@ -55,7 +59,10 @@ class PetAnalysisServiceTest {
 
     private final String loggedUserKeycloakId = "1abc23";
 
-    @Mock
+    @MockitoBean
+    private SqsTemplate sqsTemplate;
+
+    @MockitoBean
     private SQSSenderService sqsSenderService;
 
     @BeforeEach
