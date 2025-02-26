@@ -31,8 +31,6 @@ public class PetService {
     @Transactional
     public PetResponseDTO createPet(PetRequestDTO petRequestDTO, String loggedUserKeycloakId) {
         Pet pet = petMapper.toEntity(petRequestDTO);
-        System.out.println(petRequestDTO.getBirthdate());
-        System.out.println(pet.getBirthdate());
         var user = userRepository.findByKeycloakId(loggedUserKeycloakId).orElseThrow(() -> {
             throw new ResourceNotFoundException("Usuário não encontrado!");
         });
@@ -94,9 +92,6 @@ public class PetService {
         if (id < 0) {
             throw new IllegalArgumentException("ID não pode ser negativo");
         }
-        if (!petRepository.existsById(id)) {
-            throw new ResourceNotFoundException("Pet não encontrado");
-        }
 
         Pet pet = petRepository.findById(id).orElseThrow(() -> {
             throw new ResourceNotFoundException("Pet não encontrado!");
@@ -107,7 +102,7 @@ public class PetService {
         petRepository.deleteById(id);
     }
 
-    private void validatePetOwnershipOrAdmin(Pet pet, String loggedUserKeycloakId) {
+    public void validatePetOwnershipOrAdmin(Pet pet, String loggedUserKeycloakId) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
 
         if (authentication.getAuthorities().stream()

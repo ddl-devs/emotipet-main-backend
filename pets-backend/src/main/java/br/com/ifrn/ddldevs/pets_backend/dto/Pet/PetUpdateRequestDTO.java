@@ -28,6 +28,7 @@ public class PetUpdateRequestDTO {
 
     @Schema(description = "Pet's birthdate", example = "2")
     @Valid
+    @PastOrPresent
     private LocalDate birthdate;
 
     @Schema(description = "Pet's weight (kg)", example = "2.5")
