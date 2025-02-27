@@ -12,6 +12,7 @@ import java.time.LocalDate;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.springframework.web.multipart.MultipartFile;
 
 @Data
 @AllArgsConstructor
@@ -55,7 +56,6 @@ public class PetRequestDTO {
     private Integer height;
 
     @Schema(description = "Pet's photo", example = "www.foto.com")
-    @Size(min = 1, message = "Photo url can't be empty")
     @Valid
-    private String photoUrl;
+    private MultipartFile photoUrl;
 }

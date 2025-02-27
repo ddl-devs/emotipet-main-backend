@@ -16,10 +16,10 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -32,9 +32,9 @@ public class PetController {
     private PetService petService;
 
     @Operation(summary = "Create new pet for the current user")
-    @PostMapping("/")
+    @PostMapping(value = "/", consumes = "multipart/form-data")
     public ResponseEntity<PetResponseDTO> createPet(
-        @Valid @RequestBody PetRequestDTO petRequestDTO,
+        @Valid @ModelAttribute PetRequestDTO petRequestDTO,
         @AuthenticationPrincipal AuthUserDetails userDetails
     ) {
         return ResponseEntity.status(HttpStatus.CREATED)
@@ -49,10 +49,10 @@ public class PetController {
     }
 
     @Operation(summary = "Update a pet")
-    @PutMapping("/{id}")
+    @PutMapping(value = "/{id}", consumes = "multipart/form-data")
     public ResponseEntity<PetResponseDTO> updatePet(
         @PathVariable Long id,
-        @Valid @RequestBody PetUpdateRequestDTO petRequestDTO,
+        @Valid @ModelAttribute PetUpdateRequestDTO petRequestDTO,
         @AuthenticationPrincipal AuthUserDetails userDetails
     ) {
         return ResponseEntity.status(HttpStatus.OK)

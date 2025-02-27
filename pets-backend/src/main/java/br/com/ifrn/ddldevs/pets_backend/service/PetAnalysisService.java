@@ -38,6 +38,9 @@ public class PetAnalysisService {
     @Autowired
     private PetRepository petRepository;
 
+    @Autowired
+    private UploadImageService uploadImageService;
+
     @Transactional
     public PetAnalysisResponseDTO createPetAnalysis(
         PetAnalysisRequestDTO petAnalysisRequestDTO,
@@ -59,6 +62,14 @@ public class PetAnalysisService {
 
         petAnalysis.setPet(pet);
         pet.getPetAnalysis().add(petAnalysis);
+
+        String imgUrl = null;
+
+        if (petAnalysisRequestDTO.getPicture() != null) {
+            imgUrl = uploadImageService.uploadImg(petAnalysisRequestDTO.getPicture());
+        }
+
+        petAnalysis.setPicture(imgUrl);
 
         petAnalysisRepository.save(petAnalysis);
         petRepository.save(pet);

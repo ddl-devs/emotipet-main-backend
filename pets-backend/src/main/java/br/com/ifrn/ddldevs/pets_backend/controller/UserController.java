@@ -16,10 +16,10 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -54,16 +54,16 @@ public class UserController {
     }
 
     @Operation(summary = "Create new user")
-    @PostMapping("/")
-    public ResponseEntity<UserResponseDTO> createUser(@Valid @RequestBody UserRequestDTO body) {
+    @PostMapping(value = "/", consumes = "multipart/form-data")
+    public ResponseEntity<UserResponseDTO> createUser(@Valid @ModelAttribute UserRequestDTO body) {
         return ResponseEntity.ok(userService.createUser(body));
     }
 
     @Operation(summary = "Update a user")
-    @PutMapping("/{id}")
+    @PutMapping(value = "/{id}", consumes = "multipart/form-data")
     public ResponseEntity<UserResponseDTO> updateUser(
         @PathVariable Long id,
-        @RequestBody UserUpdateRequestDTO body,
+        @ModelAttribute UserUpdateRequestDTO body,
         @AuthenticationPrincipal AuthUserDetails userDetails
     ) {
         return ResponseEntity.ok(userService.updateUser(id, body, userDetails.getKeycloakId()));
@@ -90,7 +90,7 @@ public class UserController {
     @Operation(summary = "Get all pets of a user")
     @GetMapping("/pets")
     public ResponseEntity<List<PetResponseDTO>> getPets(
-            @AuthenticationPrincipal AuthUserDetails userDetails
+        @AuthenticationPrincipal AuthUserDetails userDetails
     ) {
         return ResponseEntity.ok(userService.getPets(userDetails.getKeycloakId()));
     }

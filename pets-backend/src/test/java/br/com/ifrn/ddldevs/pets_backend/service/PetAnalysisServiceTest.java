@@ -17,15 +17,14 @@ import static org.mockito.Mockito.when;
 import br.com.ifrn.ddldevs.pets_backend.domain.Pet;
 import br.com.ifrn.ddldevs.pets_backend.domain.PetAnalysis;
 import br.com.ifrn.ddldevs.pets_backend.domain.User;
-import br.com.ifrn.ddldevs.pets_backend.dto.Pet.PetUpdateRequestDTO;
 import br.com.ifrn.ddldevs.pets_backend.dto.PetAnalysis.PetAnalysisRequestDTO;
 import br.com.ifrn.ddldevs.pets_backend.dto.PetAnalysis.PetAnalysisResponseDTO;
 import br.com.ifrn.ddldevs.pets_backend.exception.AccessDeniedException;
 import br.com.ifrn.ddldevs.pets_backend.mapper.PetAnalysisMapper;
 import br.com.ifrn.ddldevs.pets_backend.repository.PetAnalysisRepository;
 import br.com.ifrn.ddldevs.pets_backend.repository.PetRepository;
+
 import java.math.BigDecimal;
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -44,19 +43,18 @@ import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
-import org.mockito.Spy;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
-@SpringBootTest
 @ActiveProfiles("test")
 class PetAnalysisServiceTest {
 
@@ -69,6 +67,9 @@ class PetAnalysisServiceTest {
     @Mock
     private PetAnalysisMapper petAnalysisMapper;
 
+    @Mock
+    private UploadImageService uploadImageService;
+
     @InjectMocks
     private PetAnalysisService petAnalysisService;
 
@@ -80,6 +81,14 @@ class PetAnalysisServiceTest {
     private SqsTemplate sqsTemplate;
 
     @MockitoBean
+    private final MultipartFile mockImage = new MockMultipartFile(
+        "photoUrl",
+        "image.jpg",
+        "image/jpeg",
+        "content".getBytes()
+    );
+
+    @Mock
     private SQSSenderService sqsSenderService;
 
     @Autowired
@@ -120,7 +129,7 @@ class PetAnalysisServiceTest {
         pet.setWeight(BigDecimal.valueOf(10.0));
         pet.setUser(user);
 
-        PetAnalysisRequestDTO requestDTO = new PetAnalysisRequestDTO(1L, "http://example.com/picture.jpg", AnalysisType.BREED);
+        PetAnalysisRequestDTO requestDTO = new PetAnalysisRequestDTO(1L, mockImage, AnalysisType.BREED);
         PetAnalysis petAnalysis = new PetAnalysis();
         PetAnalysisResponseDTO responseDTO = new PetAnalysisResponseDTO(1L, LocalDateTime.now(),  LocalDateTime.now(),"http://example.com/picture.jpg", "Healthy", 83.24,AnalysisType.BREED, AnalysisStatus.COMPLETED);
 
@@ -148,7 +157,7 @@ class PetAnalysisServiceTest {
 
     @Test
     void createPetAnalysisWithInvalidPet() {
-        PetAnalysisRequestDTO requestDTO = new PetAnalysisRequestDTO(-1L, "http://example.com/picture.jpg", AnalysisType.BREED);
+        PetAnalysisRequestDTO requestDTO = new PetAnalysisRequestDTO(-1L, mockImage, AnalysisType.BREED);
 
         when(petRepository.findById(any())).thenReturn(Optional.empty());
 
@@ -162,7 +171,7 @@ class PetAnalysisServiceTest {
 
     @Test
     void createPetAnalysisWithNullPet() {
-        PetAnalysisRequestDTO requestDTO = new PetAnalysisRequestDTO(-1L, "http://example.com/picture.jpg", AnalysisType.BREED);
+        PetAnalysisRequestDTO requestDTO = new PetAnalysisRequestDTO(-1L, mockImage, AnalysisType.BREED);
 
         assertThrows(IllegalArgumentException.class,
             () -> petAnalysisService.createPetAnalysis(requestDTO, loggedUserKeycloakId),
@@ -186,7 +195,7 @@ class PetAnalysisServiceTest {
         pet.setWeight(BigDecimal.valueOf(10.0));
         pet.setUser(user);
 
-        PetAnalysisRequestDTO requestDTO = new PetAnalysisRequestDTO(1L, "http://example.com/picture.jpg", AnalysisType.BREED);
+        PetAnalysisRequestDTO requestDTO = new PetAnalysisRequestDTO(1L, mockImage, AnalysisType.BREED);
         PetAnalysis petAnalysis = new PetAnalysis();
         PetAnalysisResponseDTO responseDTO = new PetAnalysisResponseDTO(1L, LocalDateTime.now(),  LocalDateTime.now(),"http://example.com/picture.jpg", "Healthy", 83.24,AnalysisType.BREED, AnalysisStatus.COMPLETED);
 
@@ -226,15 +235,6 @@ class PetAnalysisServiceTest {
         assertTrue(
                 errorMessage.contains("not one of the values accepted for Enum class: [BREED, EMOTIONAL]")
         );
-    }
-
-    @Test
-    void shouldNotCreateWithUrlEmpty() {
-        PetAnalysisRequestDTO dto = new PetAnalysisRequestDTO(1L, "", AnalysisType.BREED);
-
-        Set<ConstraintViolation<PetAnalysisRequestDTO>> violations = validator.validate(dto);
-        assertFalse(violations.isEmpty());
-        assertEquals(1, violations.size());
     }
 
     // b
