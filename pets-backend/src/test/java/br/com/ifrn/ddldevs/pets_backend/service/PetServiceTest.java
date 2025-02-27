@@ -51,7 +51,6 @@ import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.web.multipart.MultipartFile;
 
-@SpringBootTest
 @ActiveProfiles("test")
 class PetServiceTest {
 

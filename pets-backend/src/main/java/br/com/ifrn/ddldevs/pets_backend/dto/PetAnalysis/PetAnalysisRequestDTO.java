@@ -24,7 +24,7 @@ public class PetAnalysisRequestDTO {
     private Long petId;
 
     @Valid
-    @NotBlank
+    @NotNull
     @Schema(description = "Picture URL", example = "http://example.com/pet-analysis/picture.jpg")
     private MultipartFile picture;
 

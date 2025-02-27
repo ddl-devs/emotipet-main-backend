@@ -55,7 +55,6 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
-@SpringBootTest
 @ActiveProfiles("test")
 class PetAnalysisServiceTest {
 
@@ -196,7 +195,7 @@ class PetAnalysisServiceTest {
         pet.setWeight(BigDecimal.valueOf(10.0));
         pet.setUser(user);
 
-        PetAnalysisRequestDTO requestDTO = new PetAnalysisRequestDTO(1L, "http://example.com/picture.jpg", AnalysisType.BREED);
+        PetAnalysisRequestDTO requestDTO = new PetAnalysisRequestDTO(1L, mockImage, AnalysisType.BREED);
         PetAnalysis petAnalysis = new PetAnalysis();
         PetAnalysisResponseDTO responseDTO = new PetAnalysisResponseDTO(1L, LocalDateTime.now(),  LocalDateTime.now(),"http://example.com/picture.jpg", "Healthy", 83.24,AnalysisType.BREED, AnalysisStatus.COMPLETED);
 
@@ -236,15 +235,6 @@ class PetAnalysisServiceTest {
         assertTrue(
                 errorMessage.contains("not one of the values accepted for Enum class: [BREED, EMOTIONAL]")
         );
-    }
-
-    @Test
-    void shouldNotCreateWithUrlEmpty() {
-        PetAnalysisRequestDTO dto = new PetAnalysisRequestDTO(1L, "", AnalysisType.BREED);
-
-        Set<ConstraintViolation<PetAnalysisRequestDTO>> violations = validator.validate(dto);
-        assertFalse(violations.isEmpty());
-        assertEquals(1, violations.size());
     }
 
     // b
