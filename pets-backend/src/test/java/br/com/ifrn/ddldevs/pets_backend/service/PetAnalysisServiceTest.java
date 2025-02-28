@@ -34,7 +34,6 @@ import java.util.Set;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.exc.InvalidFormatException;
 import io.awspring.cloud.sqs.operations.SqsTemplate;
-import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validation;
 import jakarta.validation.Validator;
 import jakarta.validation.ValidatorFactory;
@@ -43,8 +42,6 @@ import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -90,9 +87,6 @@ class PetAnalysisServiceTest {
 
     @Mock
     private SQSSenderService sqsSenderService;
-
-    @Autowired
-    private RecommendationService recommendationService;
 
     public PetAnalysisServiceTest(){
         ValidatorFactory factory = Validation.buildDefaultValidatorFactory();
