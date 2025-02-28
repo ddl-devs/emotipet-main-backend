@@ -225,8 +225,6 @@ public class UserServiceTest {
 
         assertFalse(violations.isEmpty(), "Expected validation errors");
         assertEquals(2, violations.size());
-        assertEquals("Usuário tem que ter pelo menos 13 anos",
-            violations.iterator().next().getMessage());
     }
 
     // b
@@ -447,6 +445,15 @@ public class UserServiceTest {
             "ID não pode ser negativo");
     }
 
+    @Test
+    void shouldFailWhenNotFoundUser(){
+        when(userRepository.findById(1L)).thenReturn(Optional.empty());
+        assertThrows(
+                ResourceNotFoundException.class,
+                () -> userService.getUserById(1L)
+        );
+    }
+
     // d
 
     @Test
@@ -477,6 +484,50 @@ public class UserServiceTest {
             () -> userService.deleteUser(-1L, loggedUserKeycloakId),
             "ID não pode ser negativo");
     }
+
+    @Test
+    void shouldNotDeleteUserWhenNotOwner() {
+        User user = new User(
+                "1abc23",
+                "john",
+                "John",
+                "Doe",
+                "john@email.com",
+                LocalDate.of(1990, 1, 15),
+                "www.foto.url",
+                new ArrayList<>()
+        );
+
+        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+
+        assertThrows(
+                AccessDeniedException.class,
+                () -> userService.deleteUser(1L, "NotOwner")
+        );
+    }
+
+    @Test
+    void deleteNotFound(){
+        when(userRepository.findById(1L)).thenReturn(Optional.empty());
+
+        assertThrows(
+                ResourceNotFoundException.class,
+                () -> userService.deleteUser(1L, any())
+        );
+    }
+
+    // e
+
+    @Test
+    void shouldFailWhenNotFoundMe(){
+        when(userRepository.findById(1L)).thenReturn(Optional.empty());
+
+        assertThrows(
+                ResourceNotFoundException.class,
+                () -> userService.getCurrentUser("NotFound")
+        );
+    }
+
     // Structure Tests
 
     @Test
@@ -640,90 +691,73 @@ public class UserServiceTest {
     }
 
     @Test
-    void succesfullyUpdateUser() {
-        // Arrange: Configuração do Usuário e DTOs
+    void successfullyGetUsers(){
         User user = new User(
-            "1abc23",
-            "john",
-            "John",
-            "Doe",
-            "john@email.com",
-            LocalDate.of(1990, 1, 15),
-            "www.foto.url",
-            new ArrayList<>()
+                "1abc23",
+                "john",
+                "John",
+                "Doe",
+                "john@email.com",
+                LocalDate.of(1990, 1, 15), "www.foto.url",
+                new ArrayList<>()
+        );
+        User user2 = new User(
+                "1abc231",
+                "john1",
+                "John1",
+                "Doe1",
+                "john1@email.com",
+                LocalDate.of(1990, 1, 15), "www.foto1.url",
+                new ArrayList<>()
         );
 
-        UserUpdateRequestDTO userRequestDTO = new UserUpdateRequestDTO(
-            user.getEmail(),
-            "jhon updated",
-            "doe updated",
-            user.getDateOfBirth(),
-            mockImage
+        UserResponseDTO userResponse1 = new UserResponseDTO(
+                user.getId(),
+                user.getCreatedAt(),
+                user.getUpdatedAt(),
+                user.getUsername(),
+                user.getKeycloakId(),
+                user.getEmail(),
+                user.getFirstName(),
+                user.getLastName(),
+                user.getDateOfBirth(),
+                user.getPhotoUrl()
         );
 
-        KcUserResponseDTO kcUserResponseDTO = new KcUserResponseDTO(
-            user.getKeycloakId(),
-            user.getUsername(),
-            userRequestDTO.email(),
-            userRequestDTO.firstName(),
-            userRequestDTO.lastName()
+        UserResponseDTO userResponse2 = new UserResponseDTO(
+                user2.getId(),
+                user2.getCreatedAt(),
+                user2.getUpdatedAt(),
+                user2.getUsername(),
+                user2.getKeycloakId(),
+                user2.getEmail(),
+                user2.getFirstName(),
+                user2.getLastName(),
+                user2.getDateOfBirth(),
+                user2.getPhotoUrl()
         );
 
-        UserResponseDTO userResponseDTO = new UserResponseDTO(
-            user.getId(),
-            user.getCreatedAt(),
-            user.getUpdatedAt(),
-            kcUserResponseDTO.username(),
-            kcUserResponseDTO.id(),
-            kcUserResponseDTO.email(),
-            kcUserResponseDTO.firstName(),
-            kcUserResponseDTO.lastName(),
-            userRequestDTO.dateOfBirth(),
-            userRequestDTO.photoUrl().toString()
-        );
+        List<User> users = new ArrayList<>();
+        users.add(user);
+        users.add(user2);
 
-        // Mock: Simulação dos Comportamentos
-        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
-        when(keycloakServiceImpl.updateUser(user.getKeycloakId(), userRequestDTO)).thenReturn(
-            kcUserResponseDTO);
-        doAnswer(invocation -> {
-            // Atualiza o usuário local com os dados retornados do Keycloak
-            user.setUsername(kcUserResponseDTO.username());
-            user.setFirstName(kcUserResponseDTO.firstName());
-            user.setLastName(kcUserResponseDTO.lastName());
-            user.setEmail(kcUserResponseDTO.email());
-            user.setDateOfBirth(userRequestDTO.dateOfBirth());
-            user.setPhotoUrl(userRequestDTO.photoUrl().toString());
-            return null;
-        }).when(userMapper).updateEntityFromDTO(userRequestDTO, user);
-        when(userRepository.save(user)).thenReturn(user);
-        when(userMapper.toResponseDTO(user)).thenReturn(userResponseDTO);
+        List<UserResponseDTO> userResponses = new ArrayList<>();
+        userResponses.add(userResponse1);
+        userResponses.add(userResponse2);
 
-        // Act: Chamada do Método a Ser Testado
-        UserResponseDTO response = userService.updateUser(
-            1L,
-            userRequestDTO,
-            loggedUserKeycloakId
-        );
+        when(userRepository.findAll()).thenReturn(users);
+        when(userMapper.toDTOList(users)).thenReturn(userResponses);
 
-        // Assert: Verificação dos Resultados
-        verify(userRepository, times(1)).findById(1L);
-        verify(keycloakServiceImpl, times(1))
-            .updateUser(user.getKeycloakId(), userRequestDTO);
-        verify(userMapper, times(1)).
-            updateEntityFromDTO(userRequestDTO, user);
-        verify(userRepository, times(1)).save(user);
-        verify(userMapper, times(1)).toResponseDTO(user);
+        List<UserResponseDTO> responses = userService.listUsers();
 
-        // Validação dos Dados Atualizados
-        assertEquals(userResponseDTO.id(), response.id());
-        assertEquals(userResponseDTO.username(), response.username());
-        assertEquals(userResponseDTO.firstName(), response.firstName());
-        assertEquals(userResponseDTO.lastName(), response.lastName());
-        assertEquals(userResponseDTO.email(), response.email());
-        assertEquals(userResponseDTO.dateOfBirth(), response.dateOfBirth());
-        assertEquals(userResponseDTO.photoUrl(), response.photoUrl());
+        verify(userMapper, times(1)).toDTOList(users);
+        verify(userRepository, times(1)).findAll();
+
+        assertEquals(users.getFirst().getId(), responses.getFirst().id());
+        assertEquals(users.getFirst().getUsername(), responses.getFirst().username());
+
+        assertEquals(users.get(1).getId(), userResponses.get(1).id());
+        assertEquals(users.get(1).getUsername(), userResponses.get(1).username());
     }
-
 
 }

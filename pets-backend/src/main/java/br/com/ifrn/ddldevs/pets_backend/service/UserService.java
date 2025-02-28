@@ -131,13 +131,13 @@ public class UserService {
         userRepository.deleteById(id);
     }
 
-    public List<PetResponseDTO> getPetsOfCurrentUser(String loggedUserKeycloakId) {
-        var user = userRepository.findByKeycloakId(loggedUserKeycloakId).orElseThrow(() -> {
-            throw new ResourceNotFoundException("Usuário não encontrado!");
-        });
-
-        return petMapper.toDTOList(user.getPets());
-    }
+//    public List<PetResponseDTO> getPetsOfCurrentUser(String loggedUserKeycloakId) {
+//        var user = userRepository.findByKeycloakId(loggedUserKeycloakId).orElseThrow(() -> {
+//            throw new ResourceNotFoundException("Usuário não encontrado!");
+//        });
+//
+//        return petMapper.toDTOList(user.getPets());
+//    }
 
     public List<PetResponseDTO> getPets(String userKcId) {
         User user = userRepository.findByKeycloakId(userKcId)

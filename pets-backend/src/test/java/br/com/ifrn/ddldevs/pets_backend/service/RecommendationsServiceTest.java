@@ -516,4 +516,65 @@ class RecommendationsServiceTest {
 
     }
 
+
+    //Structure
+    @Test
+    void successfullyListRecommendations(){
+        User user = new User();
+        user.setId(1L);
+        user.setUsername("jhon");
+        user.setFirstName("Jhon");
+        user.setEmail("jhon@gmail.com");
+        user.setKeycloakId(loggedUserKeycloakId);
+
+        Pet pet = new Pet();
+        pet.setId(1L);
+        pet.setName("Apolo");
+        pet.setSpecies(Species.DOG);
+        pet.setHeight(30);
+        pet.setWeight(BigDecimal.valueOf(10.0));
+        pet.setUser(user);
+        Recommendation recommendation1 = new Recommendation(
+                "Relax",
+                RecommendationCategories.HEALTH,
+                pet
+        );
+        Recommendation recommendation2 = new Recommendation(
+                "Sad",
+                RecommendationCategories.HEALTH,
+                pet
+        );
+        List<Recommendation> recommendations = new ArrayList<>();
+        recommendations.add(recommendation1);
+        recommendations.add(recommendation2);
+
+        RecommendationResponseDTO responseDTO = new RecommendationResponseDTO(
+                1L,
+                null,
+                null,
+                recommendation1.getRecommendation(),
+                recommendation1.getCategoryRecommendation()
+        );
+        RecommendationResponseDTO responseDTO2 = new RecommendationResponseDTO(
+                1L,
+                null,
+                null,
+                recommendation2.getRecommendation(),
+                recommendation2.getCategoryRecommendation()
+        );
+        List<RecommendationResponseDTO> recommendationResponseDTOS = new ArrayList<>();
+        recommendationResponseDTOS.add(responseDTO);
+        recommendationResponseDTOS.add(responseDTO2);
+
+        when(recommendationRepository.findAll()).thenReturn(recommendations);
+        when(recommendationMapper.toDTOList(recommendations)).thenReturn(recommendationResponseDTOS);
+
+        List<RecommendationResponseDTO> responses = recommendationService.listRecommendations();
+
+        verify(recommendationRepository).findAll();
+        verify(recommendationMapper).toDTOList(recommendations);
+
+        assertEquals(recommendationResponseDTOS.getFirst().id(), responses.getFirst().id());
+        assertEquals(recommendationResponseDTOS.get(1).id(), responses.get(1).id());
+    }
 }

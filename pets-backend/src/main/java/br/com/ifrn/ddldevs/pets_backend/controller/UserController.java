@@ -79,16 +79,16 @@ public class UserController {
         return ResponseEntity.noContent().build();
     }
 
+//    @Operation(summary = "All pets of a logged user")
+//    @GetMapping("/my-pets")
+//    public ResponseEntity<List<PetResponseDTO>> getPetsOfCurrentUser(
+//        @AuthenticationPrincipal AuthUserDetails userDetails
+//    ) {
+//        return ResponseEntity.ok(userService.getPetsOfCurrentUser(userDetails.getKeycloakId()));
+//    }
+
     @Operation(summary = "All pets of a logged user")
     @GetMapping("/my-pets")
-    public ResponseEntity<List<PetResponseDTO>> getPetsOfCurrentUser(
-        @AuthenticationPrincipal AuthUserDetails userDetails
-    ) {
-        return ResponseEntity.ok(userService.getPetsOfCurrentUser(userDetails.getKeycloakId()));
-    }
-
-    @Operation(summary = "Get all pets of a user")
-    @GetMapping("/pets")
     public ResponseEntity<List<PetResponseDTO>> getPets(
         @AuthenticationPrincipal AuthUserDetails userDetails
     ) {

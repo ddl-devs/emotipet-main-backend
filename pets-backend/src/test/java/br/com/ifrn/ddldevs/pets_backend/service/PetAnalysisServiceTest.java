@@ -485,4 +485,67 @@ class PetAnalysisServiceTest {
                 () -> petAnalysisService.getPetAnalysis(1L, "NotOwner")
         );
     }
+
+    //Structure
+
+    @Test
+    void successfullyListAnalysis(){
+        User user = new User();
+        user.setId(1L);
+        user.setUsername("jhon");
+        user.setFirstName("Jhon");
+        user.setEmail("jhon@gmail.com");
+        user.setKeycloakId(loggedUserKeycloakId);
+
+        Pet pet = new Pet();
+        pet.setId(1L);
+        pet.setName("Apolo");
+        pet.setSpecies(Species.DOG);
+        pet.setHeight(30);
+        pet.setWeight(BigDecimal.valueOf(10.0));
+        pet.setUser(user);
+
+        PetAnalysis analyses = new PetAnalysis();
+        analyses.setId(1L);
+        analyses.setPet(pet);
+        analyses.setAnalysisType(AnalysisType.BREED);
+        analyses.setResult("Healthy");
+        analyses.setPicture("http://example.com/picture.jpg");
+
+        PetAnalysis analyses1 = new PetAnalysis();
+        analyses1.setId(2L);
+        analyses1.setPet(pet);
+        analyses1.setAnalysisType(AnalysisType.BREED);
+        analyses1.setResult("Happy");
+        analyses1.setPicture("http://example2.com/picture.jpg");
+
+        List<PetAnalysis> petAnalysisList = new ArrayList<>();
+        petAnalysisList.add(analyses);
+        petAnalysisList.add(analyses1);
+
+        PetAnalysisResponseDTO responseDTO = new PetAnalysisResponseDTO(
+                1L, LocalDateTime.now(), LocalDateTime.now(), "http://example.com/picture.jpg",
+                "Healthy", 90.0,AnalysisType.BREED, AnalysisStatus.COMPLETED);
+
+        PetAnalysisResponseDTO responseDTO2 = new PetAnalysisResponseDTO(
+                1L, LocalDateTime.now(), LocalDateTime.now(), "http://example2.com/picture.jpg",
+                "Happy", 85.0,AnalysisType.BREED, AnalysisStatus.COMPLETED);
+
+        List<PetAnalysisResponseDTO> petAnalysisResponseDTOList = new ArrayList<>();
+        petAnalysisResponseDTOList.add(responseDTO);
+        petAnalysisResponseDTOList.add(responseDTO2);
+
+        when(petAnalysisRepository.findAll()).thenReturn(petAnalysisList);
+        when(petAnalysisMapper.toResponseList(petAnalysisList)).thenReturn(petAnalysisResponseDTOList);
+
+        List<PetAnalysisResponseDTO> responses = petAnalysisService.listPetAnalyses();
+
+        assertNotNull(responses);
+        assertEquals(petAnalysisList.size(), responses.size());
+        verify(petAnalysisRepository, times(1)).findAll();
+        verify(petAnalysisMapper, times(1)).toResponseList(anyList());
+        assertEquals(responses.getFirst().id(), petAnalysisResponseDTOList.getFirst().id());
+        assertEquals(responses.get(1).id(), petAnalysisResponseDTOList.get(1).id());
+    }
+
 }

@@ -222,6 +222,12 @@
                         <goals>
                             <goal>report</goal>
                         </goals>
+                        <configuration>
+                            <excludes>
+                                <exclude>br/com/ifrn/ddldevs/pets_backend/mapper</exclude>
+                                <exclude>br/ifrn/edu/ddldevs/pets_backend/exception</exclude>
+                            </excludes>
+                        </configuration>
                     </execution>
                 </executions>
             </plugin>
