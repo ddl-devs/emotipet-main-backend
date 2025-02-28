@@ -325,7 +325,7 @@ class RecommendationsServiceTest {
         );
     }
 
-    // d
+    // c
 
     @Test
     void getRecommendationsByPetIdWithValidId() {
@@ -413,7 +413,7 @@ class RecommendationsServiceTest {
         );
     };
 
-    // e
+    // d
 
     @Test
     void getRecommendationWithValidId() {
@@ -471,6 +471,49 @@ class RecommendationsServiceTest {
         assertThrows(IllegalArgumentException.class,
             () -> recommendationService.getRecommendation(null, loggedUserKeycloakId),
             "ID não pode ser nulo");
+    }
+
+    @Test
+    void shouldNotReturnWhenNotFound() {
+        when(recommendationRepository.findById(1L)).thenReturn(Optional.empty());
+
+        assertThrows(
+                ResourceNotFoundException.class,
+                () -> recommendationService.getRecommendation(999L, loggedUserKeycloakId)
+        );
+    }
+
+    @Test
+    void shouldNotReturnRecommendationWhenNotOwner(){
+        User user = new User();
+        user.setId(1L);
+        user.setUsername("jhon");
+        user.setFirstName("Jhon");
+        user.setEmail("jhon@gmail.com");
+        user.setKeycloakId(loggedUserKeycloakId);
+
+        Pet pet = new Pet();
+        pet.setId(1L);
+        pet.setName("Apolo");
+        pet.setSpecies(Species.DOG);
+        pet.setHeight(30);
+        pet.setWeight(BigDecimal.valueOf(10.0));
+        pet.setUser(user);
+
+        Recommendation recommendation = new Recommendation();
+        recommendation.setId(1L);
+        recommendation.setRecommendation("Feed your pet twice daily");
+        recommendation.setCategoryRecommendation(RecommendationCategories.HEALTH);
+        recommendation.setCreatedAt(LocalDateTime.now());
+        recommendation.setPet(pet);
+
+        when(recommendationRepository.findById(1L)).thenReturn(Optional.of(recommendation));
+
+        assertThrows(
+                AccessDeniedException.class,
+                () -> recommendationService.getRecommendation(1L, "NotOwner")
+        );
+
     }
 
 }
