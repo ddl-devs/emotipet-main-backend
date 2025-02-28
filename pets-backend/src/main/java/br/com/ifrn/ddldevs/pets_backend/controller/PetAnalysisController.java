@@ -9,6 +9,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -27,7 +28,8 @@ import org.springframework.web.bind.annotation.RestController;
 @Tag(name = "Pets Analysis", description = "API for Pets Analysis management")
 public class PetAnalysisController {
 
-    private final PetAnalysisService petAnalysisService;
+    @Autowired
+    private PetAnalysisService petAnalysisService;
 
     @PostMapping(value = "/", consumes = "multipart/form-data")
     @Operation(summary = "Create new Pet Analysis")
