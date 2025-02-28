@@ -3,8 +3,11 @@ package br.com.ifrn.ddldevs.pets_backend.dto.User;
 import br.com.ifrn.ddldevs.pets_backend.validator.MinAge;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 import java.time.LocalDate;
+
+import jakarta.validation.constraints.Size;
 import org.springframework.web.multipart.MultipartFile;
 
 public record UserRequestDTO(
@@ -18,7 +21,7 @@ public record UserRequestDTO(
     @MinAge @Schema(description = "User's " +
         "birthdate", example = "2024-12-05") LocalDate dateOfBirth,
     @Schema(description = "User's profile photo url", example = "aws.12bs.bucket.com") MultipartFile photoUrl,
-    @NotNull @Schema(description = "User's password",
+    @NotNull @Size(min=6) @Schema(description = "User's password",
         example = "test123") String password
 ) {
 

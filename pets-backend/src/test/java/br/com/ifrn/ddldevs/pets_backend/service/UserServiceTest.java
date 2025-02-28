@@ -5,11 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.Mockito.any;
-import static org.mockito.Mockito.doAnswer;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 import br.com.ifrn.ddldevs.pets_backend.domain.Enums.Species;
 import br.com.ifrn.ddldevs.pets_backend.domain.Pet;
@@ -19,6 +15,8 @@ import br.com.ifrn.ddldevs.pets_backend.dto.User.UserRequestDTO;
 import br.com.ifrn.ddldevs.pets_backend.dto.User.UserResponseDTO;
 import br.com.ifrn.ddldevs.pets_backend.dto.User.UserUpdateRequestDTO;
 import br.com.ifrn.ddldevs.pets_backend.dto.keycloak.KcUserResponseDTO;
+import br.com.ifrn.ddldevs.pets_backend.exception.AccessDeniedException;
+import br.com.ifrn.ddldevs.pets_backend.exception.ResourceNotFoundException;
 import br.com.ifrn.ddldevs.pets_backend.keycloak.KeycloakServiceImpl;
 import br.com.ifrn.ddldevs.pets_backend.mapper.PetMapper;
 import br.com.ifrn.ddldevs.pets_backend.mapper.UserMapper;
@@ -39,9 +37,14 @@ import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
-import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.cglib.core.Local;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.mock.web.MockMultipartFile;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.context.SecurityContext;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -80,9 +83,16 @@ public class UserServiceTest {
     @BeforeEach
     void setUp() {
         MockitoAnnotations.openMocks(this);
-
         ValidatorFactory factory = Validation.buildDefaultValidatorFactory();
         validator = factory.getValidator();
+        SecurityContext securityContext = SecurityContextHolder.createEmptyContext();
+        Authentication authentication = new UsernamePasswordAuthenticationToken(
+                "jhon",
+                null,
+                List.of(new SimpleGrantedAuthority("ROLE_user"))
+        );
+        securityContext.setAuthentication(authentication);
+        SecurityContextHolder.setContext(securityContext);
     }
 
     // a
@@ -96,10 +106,50 @@ public class UserServiceTest {
             mockImage, "user!123"
         );
 
-        Set<ConstraintViolation<UserRequestDTO>> violations =
-            validator.validate(userRequestDTO);
+        KcUserResponseDTO kcResponseDTO = new KcUserResponseDTO(
+                "345",
+                "john",
+                "john@email.com",
+                "Jhon",
+                "Doe"
+        );
 
-        assertTrue(violations.isEmpty(), "Expected no validation errors");
+        User user = new User(
+                kcResponseDTO.id(),
+                userRequestDTO.username(),
+                userRequestDTO.firstName(),
+                userRequestDTO.lastName(),
+                userRequestDTO.email(),
+                userRequestDTO.dateOfBirth(),
+                "www.photo.com",
+                new ArrayList<Pet>()
+        );
+
+        UserResponseDTO userResponseDTO = new UserResponseDTO(user.getId(), user.getCreatedAt(),
+                user.getUpdatedAt(),
+                user.getUsername(),
+                user.getKeycloakId(),
+                user.getEmail(),
+                user.getFirstName(), user.getLastName(),
+                user.getDateOfBirth(), user.getPhotoUrl());
+
+        when(userMapper.toResponseDTO(user)).thenReturn(userResponseDTO);
+        when(keycloakServiceImpl.createUser(any())).thenReturn(kcResponseDTO);
+        when(userMapper.toEntity(userRequestDTO)).thenReturn(user);
+        when(uploadImageService.uploadImg(any())).thenReturn("www.photo.com");
+        when(userRepository.save(user)).thenReturn(user);
+
+        UserResponseDTO response = userService.createUser(userRequestDTO);
+
+        assertNotNull(response);
+        verify(keycloakServiceImpl).createUser(userRequestDTO);
+        verify(userMapper).toEntity(userRequestDTO);
+        verify(uploadImageService).uploadImg(any());
+        verify(userRepository).save(any(User.class));
+        verify(userMapper).toEntity(userRequestDTO);
+
+        assertEquals(response.id(), user.getId());
+        assertEquals(response.username(), user.getUsername());
     }
 
     @Test
@@ -162,24 +212,86 @@ public class UserServiceTest {
     }
 
     @Test
-    void shouldFailValidationWhenMinAgeIsFalse() {
+    void shouldFailValidationWhenMinAgePasswordIsFalse() {
         UserRequestDTO userRequestDTO = new UserRequestDTO(
             "john", "john@email.com",
             "John", "Doe",
             LocalDate.of(2015, 1, 15),
-            mockImage, "user!123"
+            mockImage, "user"
         );
 
         Set<ConstraintViolation<UserRequestDTO>> violations =
             validator.validate(userRequestDTO);
 
         assertFalse(violations.isEmpty(), "Expected validation errors");
-        assertEquals(1, violations.size());
+        assertEquals(2, violations.size());
         assertEquals("Usuário tem que ter pelo menos 13 anos",
             violations.iterator().next().getMessage());
     }
 
     // b
+    @Test
+    void shouldSuccessfullyUpdateUser() {
+        User existingUser = new User("1abc23", "john",
+                "John", "Doe", "john@email.com",
+                LocalDate.of(1990, 1, 15),
+                "www.foto.url", new ArrayList<>());
+
+        UserUpdateRequestDTO userRequestDTO = new UserUpdateRequestDTO(
+                "updated_jhon@gmail.com",
+                "updated_jhon",
+                "updated_doe",
+                LocalDate.of(2024, 10, 5),
+                mockImage
+        );
+
+        KcUserResponseDTO kcResponseDTO = new KcUserResponseDTO(
+                existingUser.getKeycloakId(),
+                existingUser.getUsername(),
+                userRequestDTO.email(),
+                userRequestDTO.firstName(),
+                userRequestDTO.lastName()
+        );
+
+        User updatedUser = new User(
+                kcResponseDTO.id(),
+                existingUser.getUsername(),
+                userRequestDTO.firstName(),
+                userRequestDTO.lastName(),
+                userRequestDTO.email(),
+                userRequestDTO.dateOfBirth(),
+                "www.new_photo.com",
+                new ArrayList<Pet>()
+        );
+
+        UserResponseDTO userResponseDTO = new UserResponseDTO(updatedUser.getId(), updatedUser.getCreatedAt(),
+                updatedUser.getUpdatedAt(),
+                updatedUser.getUsername(),
+                updatedUser.getKeycloakId(),
+                updatedUser.getEmail(),
+                updatedUser.getFirstName(), updatedUser.getLastName(),
+                updatedUser.getDateOfBirth(), updatedUser.getPhotoUrl());
+
+        when(userRepository.findById(1L)).thenReturn(Optional.of(existingUser));
+        when(keycloakServiceImpl.updateUser(existingUser.getKeycloakId(), userRequestDTO)).thenReturn(kcResponseDTO);
+        doNothing().when(userMapper).updateEntityFromDTO(userRequestDTO, existingUser);
+        when(uploadImageService.uploadImg(any())).thenReturn("www.new_photo.com");
+        when(userRepository.save(existingUser)).thenReturn(updatedUser);
+        when(userMapper.toResponseDTO(updatedUser)).thenReturn(userResponseDTO);
+
+        UserResponseDTO response = userService.updateUser(1L, userRequestDTO, loggedUserKeycloakId);
+
+        assertNotNull(response);
+        verify(keycloakServiceImpl).updateUser(existingUser.getKeycloakId(), userRequestDTO);
+        verify(userMapper).toResponseDTO(updatedUser);
+        verify(uploadImageService).uploadImg(any());
+        verify(userRepository).save(any(User.class));
+        verify(userMapper).toResponseDTO(updatedUser);
+        verify(userMapper).updateEntityFromDTO(userRequestDTO, existingUser);
+
+        assertEquals(response.id(), updatedUser.getId());
+        assertEquals(response.email(), updatedUser.getEmail());
+    }
 
     @Test
     void updateUserNullId() {
@@ -207,6 +319,87 @@ public class UserServiceTest {
         assertThrows(IllegalArgumentException.class,
             () -> userService.updateUser(-1L, userRequestDTO, loggedUserKeycloakId),
             "ID não pode ser negativo");
+    }
+
+    @Test
+    void shouldFailUpdateWhenInvalidInfo() {
+        UserUpdateRequestDTO userRequestDTO = new UserUpdateRequestDTO(
+                "updated_jhongmail.com",
+                "",
+                "",
+                LocalDate.of(2024, 10, 5),
+                mockImage
+        );
+
+        Set<ConstraintViolation<UserUpdateRequestDTO>> violations =
+                validator.validate(userRequestDTO);
+
+        assertFalse(violations.isEmpty(), "Expected validation errors");
+        assertEquals(4, violations.size(), "Expected exactly one validation error");
+    }
+
+    @Test
+    void shouldFailUpdateWhenEmailEmpty() {
+        UserUpdateRequestDTO userRequestDTO = new UserUpdateRequestDTO(
+                "",
+                null,
+                null,
+                null,
+                null
+        );
+
+        Set<ConstraintViolation<UserUpdateRequestDTO>> violations =
+                validator.validate(userRequestDTO);
+
+        for (ConstraintViolation<UserUpdateRequestDTO> violation : violations) {
+            System.out.println(violation.getPropertyPath() + violation.getMessage());
+        }
+        assertFalse(violations.isEmpty(), "Expected validation errors");
+        assertEquals(1, violations.size(), "Expected exactly one validation error");
+    }
+
+    @Test
+    void shouldFailUpdateWhenEmailExists() {
+
+        User existingUser = new User("1abc23", "john",
+                "John", "Doe", "a_john@email.com",
+                LocalDate.of(1990, 1, 15),
+                "www.foto.url", new ArrayList<>());
+
+        UserUpdateRequestDTO userRequestDTO = new UserUpdateRequestDTO(
+                "john@email.com",
+                "updated_jhon",
+                "updated_doe",
+                LocalDate.of(2024, 10, 5),
+                null
+        );
+
+        when(userRepository.findById(1L)).thenReturn(Optional.of(existingUser));
+        when(keycloakServiceImpl.updateUser(existingUser.getKeycloakId(), userRequestDTO)).thenReturn(any());
+
+        when(userRepository.save(existingUser)).thenThrow(
+                DataIntegrityViolationException.class);
+
+        assertThrows(
+                DataIntegrityViolationException.class,
+                () -> userService.updateUser(1L, userRequestDTO, loggedUserKeycloakId),
+                "Expected save to throw DataIntegrityViolationException, but it didn't"
+        );
+    }
+
+    @Test
+    void shouldNotUpdateWhenIsNotAccountOwner() {
+        User user = new User("1abc23", "john",
+                "John", "Doe", "a_john@email.com",
+                LocalDate.of(1990, 1, 15),
+                "www.foto.url", new ArrayList<>());
+
+        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+
+        assertThrows(
+                AccessDeniedException.class,
+                () -> userService.updateUser(1L, any(), "NotOwner")
+        );
     }
 
     // c
@@ -358,7 +551,7 @@ public class UserServiceTest {
     void getPetsUserNotFound() {
         when(userRepository.existsById(1L)).thenReturn(false);
 
-        assertThrows(NotFoundException.class,
+        assertThrows(ResourceNotFoundException.class,
             () -> userService.getPets("123"),
             "Usuário não encontrado");
     }
@@ -392,7 +585,7 @@ public class UserServiceTest {
         user.getPets().add(pet);
         user.getPets().add(pet2);
 
-        when(userRepository.findById(any())).thenReturn(Optional.of(user));
+        when(userRepository.findByKeycloakId(any())).thenReturn(Optional.of(user));
 
         PetResponseDTO petResponse1 = new PetResponseDTO(
             pet.getId(),
@@ -429,7 +622,7 @@ public class UserServiceTest {
         when(petMapper.toDTOList(user.getPets())).thenReturn(petResponses);
         List<PetResponseDTO> response = userService.getPets("1abc23");
 
-        verify(userRepository, times(1)).findById(1L);
+        verify(userRepository, times(1)).findByKeycloakId(any());
         verify(petMapper, times(1)).toDTOList(user.getPets());
 
         assertEquals(petResponses.getFirst().id(), response.getFirst().id());
