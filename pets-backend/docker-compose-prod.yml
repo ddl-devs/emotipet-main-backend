@@ -16,7 +16,7 @@ services:
     depends_on:
       - prometheus
     env_file:
-      - ./envs/prod/spring.env
+      - ./spring.env
 
   postgres:
     image: postgres:16
@@ -26,17 +26,19 @@ services:
     volumes:
       - postgres-data:/var/lib/postgresql/data
     env_file:
-      - ./envs/prod/spring.env
+      - ./spring.env
 
   emotipet-backend:
-    build: Dockerfile
+    build:
+      context: .
+      dockerfile: Dockerfile
     container_name: emotipet-backend
     ports:
       - "8080:8080"
     depends_on:
       - postgres
     env_file:
-      - ./envs/prod/spring.env
+      - ./spring.env
 
 volumes:
   postgres-data:
