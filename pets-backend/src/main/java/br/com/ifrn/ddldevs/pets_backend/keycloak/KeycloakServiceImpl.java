@@ -1,38 +1,40 @@
 package br.com.ifrn.ddldevs.pets_backend.keycloak;
 
+import br.com.ifrn.ddldevs.pets_backend.dto.User.UserRequestDTO;
 import br.com.ifrn.ddldevs.pets_backend.dto.User.UserUpdateRequestDTO;
 import br.com.ifrn.ddldevs.pets_backend.dto.keycloak.KcUserResponseDTO;
 import br.com.ifrn.ddldevs.pets_backend.dto.keycloak.LoginRequestDTO;
 import br.com.ifrn.ddldevs.pets_backend.dto.keycloak.LogoutRequestDTO;
-import br.com.ifrn.ddldevs.pets_backend.dto.User.UserRequestDTO;
 import br.com.ifrn.ddldevs.pets_backend.exception.KeycloakException;
-
 import br.com.ifrn.ddldevs.pets_backend.exception.ResourceNotFoundException;
 import jakarta.ws.rs.core.Response;
-
+import java.net.URI;
+import java.util.Collections;
 import org.keycloak.admin.client.Keycloak;
 import org.keycloak.admin.client.resource.RealmResource;
 import org.keycloak.admin.client.resource.UserResource;
 import org.keycloak.admin.client.resource.UsersResource;
 import org.keycloak.representations.idm.CredentialRepresentation;
 import org.keycloak.representations.idm.UserRepresentation;
-
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.*;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 
-import java.net.URI;
-import java.util.Collections;
-
 @Service
-public class KeycloakServiceImpl implements KeycloakService{
+public class KeycloakServiceImpl implements KeycloakService {
 
     @Value("${keycloak.realm}")
     String realmName;
+
+    @Value("${keycloak.server-url}")
+    String serverUrl;
 
     private final Keycloak keycloak;
 
@@ -53,14 +55,14 @@ public class KeycloakServiceImpl implements KeycloakService{
         formData.add("grant_type", dto.grantType());
 
         HttpEntity<MultiValueMap<String, String>> entity =
-                new HttpEntity<MultiValueMap<String, String>>(formData, headers);
+            new HttpEntity<MultiValueMap<String, String>>(formData, headers);
 
         try {
             var response = rt.exchange(
-                    "http://localhost:8082/realms/" + realmName + "/protocol/openid-connect/token",
-                    HttpMethod.POST,
-                    entity,
-                    String.class
+                serverUrl + "/protocol/openid-connect/token",
+                HttpMethod.POST,
+                entity,
+                String.class
             );
 
             return response.getBody();
@@ -80,13 +82,13 @@ public class KeycloakServiceImpl implements KeycloakService{
         formData.add("refresh_token", dto.refresh_token());
 
         HttpEntity<MultiValueMap<String, String>> entity =
-                new HttpEntity<MultiValueMap<String, String>>(formData, headers);
+            new HttpEntity<MultiValueMap<String, String>>(formData, headers);
 
         try {
             var response = rt.postForEntity(
-                    "http://localhost:8082/realms/" + realmName + "/protocol/openid-connect/logout",
-                    entity,
-                    String.class
+                serverUrl + "/protocol/openid-connect/logout",
+                entity,
+                String.class
             );
 
             return response.getBody();
@@ -125,7 +127,7 @@ public class KeycloakServiceImpl implements KeycloakService{
 
         UsersResource usersResource = getUsersResource();
 
-        try{
+        try {
             Response response = usersResource.create(user);
             System.out.println("Response Status: " + response.getStatus());
             System.out.println("Response Body: " + response.readEntity(String.class));
@@ -134,16 +136,16 @@ public class KeycloakServiceImpl implements KeycloakService{
             String userId = location.getPath().replaceAll(".*/([^/]+)$", "$1");
 
             UserRepresentation createdUser = keycloak.realm(realmName)
-                    .users()
-                    .get(userId)
-                    .toRepresentation();
+                .users()
+                .get(userId)
+                .toRepresentation();
 
             return new KcUserResponseDTO(
-                    createdUser.getId(),
-                    createdUser.getUsername(),
-                    createdUser.getEmail(),
-                    createdUser.getFirstName(),
-                    createdUser.getLastName()
+                createdUser.getId(),
+                createdUser.getUsername(),
+                createdUser.getEmail(),
+                createdUser.getFirstName(),
+                createdUser.getLastName()
             );
         } catch (Exception e) {
             throw new RuntimeException("Error creating user: " + e.getMessage());
@@ -166,14 +168,15 @@ public class KeycloakServiceImpl implements KeycloakService{
             UserRepresentation updatedUser = userResource.toRepresentation();
 
             return new KcUserResponseDTO(
-                    updatedUser.getId(),
-                    updatedUser.getUsername(),
-                    updatedUser.getEmail(),
-                    updatedUser.getFirstName(),
-                    updatedUser.getLastName()
+                updatedUser.getId(),
+                updatedUser.getUsername(),
+                updatedUser.getEmail(),
+                updatedUser.getFirstName(),
+                updatedUser.getLastName()
             );
         } catch (Exception e) {
-            throw new RuntimeException("Unexpected error while updating user: " + e.getMessage(), e);
+            throw new RuntimeException("Unexpected error while updating user: " + e.getMessage(),
+                e);
         }
     }
 
