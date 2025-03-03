@@ -14,7 +14,7 @@ import org.springframework.web.multipart.MultipartFile;
 @Service
 public class UploadImageService {
 
-    @Value("${AWS_S3_NAME}")
+    @Value("${AWS_BUCKET_NAME}")
     private String bucketName;
 
     @Autowired

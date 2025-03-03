@@ -34,6 +34,9 @@ public class KeycloakServiceImpl implements KeycloakService{
     @Value("${keycloak.realm}")
     String realmName;
 
+    @Value("${keycloak.server-url}")
+    String serverUrl;
+
     private final Keycloak keycloak;
 
     public KeycloakServiceImpl(Keycloak keycloak) {
@@ -54,10 +57,9 @@ public class KeycloakServiceImpl implements KeycloakService{
 
         HttpEntity<MultiValueMap<String, String>> entity =
                 new HttpEntity<MultiValueMap<String, String>>(formData, headers);
-
         try {
             var response = rt.exchange(
-                    "http://localhost:8082/realms/" + realmName + "/protocol/openid-connect/token",
+                    serverUrl + "/realms/" + realmName + "/protocol/openid-connect/token",
                     HttpMethod.POST,
                     entity,
                     String.class
@@ -124,7 +126,6 @@ public class KeycloakServiceImpl implements KeycloakService{
         }
 
         UsersResource usersResource = getUsersResource();
-
         try{
             Response response = usersResource.create(user);
             System.out.println("Response Status: " + response.getStatus());
