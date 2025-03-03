@@ -199,7 +199,6 @@ class PetServiceTest {
                 () -> objectMapper.readValue(invalidJson, PetRequestDTO.class)
         );
         String errorMessage = exception.getMessage();
-        System.out.println(errorMessage);
         assertTrue(
                 errorMessage.contains("not one of the values accepted for Enum class: [DOG, CAT]")
         );
@@ -361,7 +360,6 @@ class PetServiceTest {
                 () -> objectMapper.readValue(invalidJson, PetUpdateRequestDTO.class)
         );
         String errorMessage = exception.getMessage();
-        System.out.println(errorMessage);
         assertTrue(
                 errorMessage.contains("not one of the values accepted for Enum class: [DOG, CAT]")
         );
