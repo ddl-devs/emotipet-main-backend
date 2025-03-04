@@ -36,6 +36,9 @@ public class KeycloakServiceImpl implements KeycloakService {
     @Value("${keycloak.server-url}")
     String serverUrl;
 
+    @Value("${keycloak.client-id}")
+    String clientId;
+
     private final Keycloak keycloak;
 
     public KeycloakServiceImpl(Keycloak keycloak) {
@@ -49,10 +52,10 @@ public class KeycloakServiceImpl implements KeycloakService {
         headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
 
         MultiValueMap<String, String> formData = new LinkedMultiValueMap<>();
-        formData.add("client_id", dto.clientId());
+        formData.add("client_id", clientId);
         formData.add("username", dto.username());
         formData.add("password", dto.password());
-        formData.add("grant_type", dto.grantType());
+        formData.add("grant_type", "password");
 
         HttpEntity<MultiValueMap<String, String>> entity =
                 new HttpEntity<MultiValueMap<String, String>>(formData, headers);
@@ -77,7 +80,7 @@ public class KeycloakServiceImpl implements KeycloakService {
         headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
 
         MultiValueMap<String, String> formData = new LinkedMultiValueMap<>();
-        formData.add("client_id", dto.client_id());
+        formData.add("client_id", clientId);
         formData.add("refresh_token", dto.refresh_token());
 
         HttpEntity<MultiValueMap<String, String>> entity =

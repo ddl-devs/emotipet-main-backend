@@ -20,6 +20,6 @@ COPY --from=build /workspace/app/target/*.jar app.jar
 
 # Adicionar healthcheck
 HEALTHCHECK --interval=30s --timeout=3s \
-  CMD wget --quiet --tries=1 --spider http://localhost:8080/actuator/health || exit 1
+  CMD wget --quiet --tries=1 --spider http://localhost:8080/swagger-ui/index.html || exit 1
 
 ENTRYPOINT ["java", "-jar", "app.jar"]
