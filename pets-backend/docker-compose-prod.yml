@@ -32,6 +32,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      args:
+        - NO_CACHE=true
     container_name: emotipet-backend
     ports:
       - "8080:8080"
