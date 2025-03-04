@@ -55,14 +55,13 @@ public class KeycloakServiceImpl implements KeycloakService {
         formData.add("grant_type", dto.grantType());
 
         HttpEntity<MultiValueMap<String, String>> entity =
-            new HttpEntity<MultiValueMap<String, String>>(formData, headers);
-
+                new HttpEntity<MultiValueMap<String, String>>(formData, headers);
         try {
             var response = rt.exchange(
-                serverUrl + "/protocol/openid-connect/token",
-                HttpMethod.POST,
-                entity,
-                String.class
+                    serverUrl + "/realms/" + realmName + "/protocol/openid-connect/token",
+                    HttpMethod.POST,
+                    entity,
+                    String.class
             );
 
             return response.getBody();
@@ -86,7 +85,7 @@ public class KeycloakServiceImpl implements KeycloakService {
 
         try {
             var response = rt.postForEntity(
-                serverUrl + "/protocol/openid-connect/logout",
+                    serverUrl + "/realms/" + realmName + "/protocol/openid-connect/logout",
                 entity,
                 String.class
             );
