@@ -68,22 +68,22 @@ jobs:
               cd $APP_DIR
             fi
 
-            cp /home/ubuntu/spring.env $APP_DIR/spring.env
+            sudo cp /home/ubuntu/spring.env $APP_DIR/spring.env
 
             CONTAINER_NAME="emotipet-backend"
             IMAGE_NAME="pets-backend-emotipet-backend"
             
             if docker ps -a --format '{{.Names}}' | grep -q "$CONTAINER_NAME"; then
-              docker compose stop $CONTAINER_NAME
-              docker compose rm -f $CONTAINER_NAME
+              sudo docker compose stop $CONTAINER_NAME
+              sudo docker compose rm -f $CONTAINER_NAME
             fi
             
             IMAGE_ID=$(docker images -q $IMAGE_NAME)
             if [ -n "$IMAGE_ID" ]; then
-              docker rmi -f $IMAGE_ID
+              sudo docker rmi -f $IMAGE_ID
             fi
 
-            docker builder prune -f
+            sudo docker builder prune -f
             
             sudo docker compose -f docker-compose-prod.yml up -d 
           EOF
