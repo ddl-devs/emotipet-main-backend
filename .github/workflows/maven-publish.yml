@@ -74,8 +74,8 @@ jobs:
             IMAGE_NAME="pets-backend-emotipet-backend"
             
             if docker ps -a --format '{{.Names}}' | grep -q "$CONTAINER_NAME"; then
-              sudo docker compose stop $CONTAINER_NAME
-              sudo docker compose rm -f $CONTAINER_NAME
+              sudo docker stop $CONTAINER_NAME
+              sudo docker rm -f $CONTAINER_NAME
             fi
             
             IMAGE_ID=$(docker images -q $IMAGE_NAME)
