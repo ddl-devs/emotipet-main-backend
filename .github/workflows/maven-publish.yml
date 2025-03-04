@@ -3,7 +3,7 @@ name: CI/CD for pets-backend
 on:
   push:
     branches:
-      - feat/cd
+      - main
   pull_request:
     branches:
       - main
@@ -36,7 +36,7 @@ jobs:
 
   deploy:
     needs: build-and-test
-    if: github.ref == 'refs/heads/feat/cd' 
+    if: github.ref == 'refs/heads/main' 
     runs-on: ubuntu-latest
 
     steps:
@@ -62,12 +62,12 @@ jobs:
             
             if [ -d "$APP_DIR" ]; then
               cd $APP_DIR
-              git checkout feat/cd
+              git checkout main
               git pull
             else
               git clone https://github.com/ddl-devs/emotipet-main-backend.git
               cd $APP_DIR
-              git checkout feat/cd
+              git checkout main
             fi
 
             sudo cp /home/ubuntu/spring.env $APP_DIR/spring.env
