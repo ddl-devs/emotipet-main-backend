@@ -1,5 +1,7 @@
 package br.com.ifrn.ddldevs.pets_backend.controller;
 
+import br.com.ifrn.ddldevs.pets_backend.domain.Enums.Gender;
+import br.com.ifrn.ddldevs.pets_backend.domain.Enums.Species;
 import br.com.ifrn.ddldevs.pets_backend.dto.Pet.PetResponseDTO;
 import br.com.ifrn.ddldevs.pets_backend.dto.User.UserRequestDTO;
 import br.com.ifrn.ddldevs.pets_backend.dto.User.UserResponseDTO;
@@ -11,17 +13,12 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import java.util.List;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.ModelAttribute;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/users")
@@ -81,10 +78,16 @@ public class UserController {
 
     @Operation(summary = "All pets of a logged user")
     @GetMapping("/my-pets")
-    public ResponseEntity<List<PetResponseDTO>> getPetsOfCurrentUser(
-        @AuthenticationPrincipal AuthUserDetails userDetails
+    public ResponseEntity<Page<PetResponseDTO>> getPetsOfCurrentUser(
+            @AuthenticationPrincipal AuthUserDetails userDetails,
+            @RequestParam(required = false) String name,
+            @RequestParam(required = false) Species species,
+            @RequestParam(required = false) String breed,
+            @RequestParam(required = false) Gender gender,
+            Pageable pageable
     ) {
-        return ResponseEntity.ok(userService.getPetsOfCurrentUser(userDetails.getKeycloakId()));
+        return ResponseEntity.ok(userService.getPetsOfCurrentUser(
+                userDetails.getKeycloakId(), name, species, breed, gender, pageable));
     }
 
     @Operation(summary = "Get all pets of a user")

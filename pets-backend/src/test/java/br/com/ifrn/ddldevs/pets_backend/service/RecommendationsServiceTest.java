@@ -18,6 +18,7 @@ import br.com.ifrn.ddldevs.pets_backend.microservice.RecommendationRequestsServi
 import br.com.ifrn.ddldevs.pets_backend.repository.PetRepository;
 import br.com.ifrn.ddldevs.pets_backend.repository.RecommendationRepository;
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -31,6 +32,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
+import org.springframework.cglib.core.Local;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
@@ -368,7 +370,8 @@ class RecommendationsServiceTest {
         when(petRepository.findById(1L)).thenReturn(Optional.of(pet));
         when(recommendationRepository.findAll(any(Specification.class), any(Pageable.class))).thenReturn(recommendationPage);
 
-        Page<RecommendationResponseDTO> response = recommendationService.getAllByPetId(1L, loggedUserKeycloakId, pageable, "HEALTH");
+        Page<RecommendationResponseDTO> response = recommendationService.getAllByPetId(1L, loggedUserKeycloakId, pageable, "HEALTH"
+                , LocalDate.now(), LocalDate.of(2030, 10, 5));
 
         assertNotNull(response);
         verify(recommendationRepository).findAll(any(Specification.class), any(Pageable.class));
@@ -377,14 +380,16 @@ class RecommendationsServiceTest {
     @Test
     void getRecommendationByPetWithInvalidId() {
         assertThrows(IllegalArgumentException.class,
-                () -> recommendationService.getAllByPetId(-1L, loggedUserKeycloakId, PageRequest.of(0, 10), "HEALTH"),
+                () -> recommendationService.getAllByPetId(-1L, loggedUserKeycloakId, PageRequest.of(0,
+                        10), "HEALTH", LocalDate.now(), LocalDate.of(2030, 10, 5)),
                 "ID não pode ser negativo");
     }
 
     @Test
     void getRecommendationByPetWithNullId() {
         assertThrows(IllegalArgumentException.class,
-                () -> recommendationService.getAllByPetId(null, loggedUserKeycloakId, PageRequest.of(0, 10), "HEALTH"),
+                () -> recommendationService.getAllByPetId(null, loggedUserKeycloakId,
+                        PageRequest.of(0, 10), "HEALTH", LocalDate.now(), LocalDate.of(2030, 10, 5)),
                 "ID não pode ser nulo");
     }
 
@@ -394,7 +399,8 @@ class RecommendationsServiceTest {
 
         assertThrows(
                 ResourceNotFoundException.class,
-                () -> recommendationService.getAllByPetId(999L, loggedUserKeycloakId, PageRequest.of(0, 10), "HEALTH")
+                () -> recommendationService.getAllByPetId(999L, loggedUserKeycloakId,
+                        PageRequest.of(0, 10), "HEALTH", LocalDate.now(), LocalDate.of(2030, 10, 5))
         );
     }
 
@@ -419,7 +425,8 @@ class RecommendationsServiceTest {
 
         assertThrows(
                 AccessDeniedException.class,
-                () -> recommendationService.getAllByPetId(1L, "NotOwner", PageRequest.of(0, 10), "HEALTH")
+                () -> recommendationService.getAllByPetId(1L, "NotOwner",
+                        PageRequest.of(0, 10), "HEALTH", LocalDate.now(), LocalDate.of(2030, 10, 5))
         );
     }
 

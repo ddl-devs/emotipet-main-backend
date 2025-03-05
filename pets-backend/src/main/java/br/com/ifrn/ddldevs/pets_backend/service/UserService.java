@@ -1,5 +1,8 @@
 package br.com.ifrn.ddldevs.pets_backend.service;
 
+import br.com.ifrn.ddldevs.pets_backend.domain.Enums.Gender;
+import br.com.ifrn.ddldevs.pets_backend.domain.Enums.Species;
+import br.com.ifrn.ddldevs.pets_backend.domain.Pet;
 import br.com.ifrn.ddldevs.pets_backend.domain.User;
 import br.com.ifrn.ddldevs.pets_backend.dto.Pet.PetResponseDTO;
 import br.com.ifrn.ddldevs.pets_backend.dto.User.UserRequestDTO;
@@ -11,9 +14,15 @@ import br.com.ifrn.ddldevs.pets_backend.exception.ResourceNotFoundException;
 import br.com.ifrn.ddldevs.pets_backend.keycloak.KeycloakServiceImpl;
 import br.com.ifrn.ddldevs.pets_backend.mapper.PetMapper;
 import br.com.ifrn.ddldevs.pets_backend.mapper.UserMapper;
+import br.com.ifrn.ddldevs.pets_backend.repository.PetRepository;
 import br.com.ifrn.ddldevs.pets_backend.repository.UserRepository;
 import java.util.List;
+
+import br.com.ifrn.ddldevs.pets_backend.specifications.PetSpec;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -36,6 +45,8 @@ public class UserService {
 
     @Autowired
     private UploadImageService uploadImageService;
+    @Autowired
+    private PetRepository petRepository;
 
     @Transactional
     public UserResponseDTO createUser(UserRequestDTO dto) {
@@ -131,12 +142,18 @@ public class UserService {
         userRepository.deleteById(id);
     }
 
-    public List<PetResponseDTO> getPetsOfCurrentUser(String loggedUserKeycloakId) {
+    public Page<PetResponseDTO> getPetsOfCurrentUser(String loggedUserKeycloakId, String name, Species species, String Breed, Gender gender, Pageable pg) {
         var user = userRepository.findByKeycloakId(loggedUserKeycloakId).orElseThrow(() -> {
             throw new ResourceNotFoundException("Usuário não encontrado!");
         });
+        Specification<Pet> spec = Specification.where(PetSpec.hasUserId(user.getId()))
+                        .and(PetSpec.hasName(name))
+                                .and(PetSpec.hasSpecies(species))
+                                        .and(PetSpec.hasBreed(Breed))
+                                                .and(PetSpec.hasGender(gender));
 
-        return petMapper.toDTOList(user.getPets());
+        Page<Pet> pets = petRepository.findAll(spec, pg);
+        return pets.map(petMapper::toPetResponseDTO);
     }
 
     public List<PetResponseDTO> getPets(String userKcId) {

@@ -8,15 +8,12 @@ import br.com.ifrn.ddldevs.pets_backend.service.RecommendationService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
-import java.util.List;
 
-import net.kaczmarzyk.spring.data.jpa.domain.LikeIgnoreCase;
-import net.kaczmarzyk.spring.data.jpa.web.annotation.And;
-import net.kaczmarzyk.spring.data.jpa.web.annotation.Spec;
+import java.time.LocalDate;
+import java.util.List;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -78,10 +75,12 @@ public class RecommendationController {
                 @PathVariable Long id,
                 @AuthenticationPrincipal AuthUserDetails userDetails,
                 Pageable pageable,
-                @RequestParam(required = false) String category
+                @RequestParam(required = false) String category,
+                @RequestParam(required = false)LocalDate startDate,
+                @RequestParam(required = false)LocalDate endDate
             ) {
         return ResponseEntity.status(HttpStatus.OK).body(
-            recommendationService.getAllByPetId(id, userDetails.getKeycloakId(), pageable, category)
+            recommendationService.getAllByPetId(id, userDetails.getKeycloakId(), pageable, category, startDate, endDate)
         );
     }
 }
