@@ -32,7 +32,6 @@ import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
@@ -40,9 +39,6 @@ import org.springframework.test.web.servlet.result.MockMvcResultMatchers;
 
 @SpringBootTest
 @AutoConfigureMockMvc
-@TestPropertySource(properties = {
-    "AWS_BUCKET_NAME=emotipet-bucket"
-})
 @ActiveProfiles("test")
 @Import({SecurityTestConfig.class})
 public class UserControllerTest {
@@ -52,9 +48,6 @@ public class UserControllerTest {
 
     @Autowired
     private ObjectMapper objectMapper;
-
-    @MockitoBean
-    private KeycloakServiceImpl keycloakServiceImpl;
 
     @Autowired
     private UserMapper userMapper;
@@ -73,6 +66,9 @@ public class UserControllerTest {
 
     @Autowired
     private UploadImageService uploadImageService;
+
+    @MockitoBean
+    private KeycloakServiceImpl keycloakServiceImpl;
 
     @MockitoBean
     MockMultipartFile mockImage = new MockMultipartFile(
@@ -165,7 +161,7 @@ public class UserControllerTest {
         when(jwtDecoder.decode(tokenString)).thenReturn(jwt);
 
         mockMvc.perform(
-                MockMvcRequestBuilders.get("/users/" + 1L)
+                MockMvcRequestBuilders.get("/users/{id}", user.getId())
                     .header("Authorization", "Bearer " + tokenString)
             )
             .andExpect(MockMvcResultMatchers.status().isOk());
@@ -212,7 +208,6 @@ public class UserControllerTest {
             .andExpect(MockMvcResultMatchers.status()
                 .isOk());
     }
-
 
     @Test
     @DisplayName("Deve atualizar um usuário com sucesso")

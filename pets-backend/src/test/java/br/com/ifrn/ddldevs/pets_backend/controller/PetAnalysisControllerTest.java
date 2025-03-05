@@ -6,6 +6,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import br.com.ifrn.ddldevs.pets_backend.SecurityTestConfig;
+import br.com.ifrn.ddldevs.pets_backend.amazonSqs.SQSSenderService;
+import br.com.ifrn.ddldevs.pets_backend.domain.Enums.AnalysisStatus;
 import br.com.ifrn.ddldevs.pets_backend.domain.Enums.AnalysisType;
 import br.com.ifrn.ddldevs.pets_backend.domain.Enums.Gender;
 import br.com.ifrn.ddldevs.pets_backend.domain.Enums.Species;
@@ -22,9 +24,12 @@ import br.com.ifrn.ddldevs.pets_backend.repository.PetAnalysisRepository;
 import br.com.ifrn.ddldevs.pets_backend.repository.PetRepository;
 import br.com.ifrn.ddldevs.pets_backend.repository.UserRepository;
 import br.com.ifrn.ddldevs.pets_backend.service.PetAnalysisService;
+import br.com.ifrn.ddldevs.pets_backend.service.UploadImageService;
 import jakarta.transaction.Transactional;
+import jakarta.ws.rs.core.MediaType;
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.Base64;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
@@ -37,12 +42,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
-import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
@@ -50,18 +53,12 @@ import org.springframework.test.web.servlet.result.MockMvcResultMatchers;
 
 @SpringBootTest
 @AutoConfigureMockMvc
-@TestPropertySource(properties = {
-    "AWS_BUCKET_NAME=emotipet-bucket"
-})
 @ActiveProfiles("test")
 @Import({SecurityTestConfig.class})
 public class PetAnalysisControllerTest {
 
     @Autowired
     private MockMvc mockMvc;
-
-    @Mock
-    private PetAnalysisService petAnalysisService;
 
     @Autowired
     private UserRepository userRepository;
@@ -87,7 +84,15 @@ public class PetAnalysisControllerTest {
     @Autowired
     private TokenUtils tokenUtils;
 
+    @Mock
+    private PetAnalysisService petAnalysisService;
+
     @MockitoBean
+    private SQSSenderService sqsSenderService;
+
+    @MockitoBean
+    private UploadImageService uploadImageService;
+
     MockMultipartFile mockImage = new MockMultipartFile(
         "file",
         "user-picture.jpg",
@@ -134,17 +139,28 @@ public class PetAnalysisControllerTest {
         pet.setUser(user);
         pet = petRepository.save(pet);
 
-        System.out.println("petId: " + pet.getId());
+        pet = petMapper.toEntity(petRequest);
+        pet.setUser(user);
+        pet = petRepository.saveAndFlush(pet);
+
+        Pet savedPet = petRepository.findById(pet.getId())
+            .orElseThrow(() -> new RuntimeException("Pet not found"));
 
         PetAnalysisRequestDTO petAnalysisRequest = new PetAnalysisRequestDTO(
-            pet.getId(),
+            savedPet.getId(),
             mockImage,
-            AnalysisType.BREED
+            AnalysisType.EMOTIONAL
         );
 
         petAnalysis = petAnalysisMapper.toEntity(petAnalysisRequest);
+        petAnalysis.setPet(savedPet);
+
+        byte[] pictureBytes = mockImage.getBytes();
+        petAnalysis.setPicture(Base64.getEncoder().encodeToString(pictureBytes));
+        petAnalysis.setAnalysisStatus(AnalysisStatus.COMPLETED);
         petAnalysis = petAnalysisRepository.save(petAnalysis);
     }
+
 
     @AfterEach
     @Transactional
@@ -183,24 +199,67 @@ public class PetAnalysisControllerTest {
     }
 
     @Test
-    @DisplayName("Deve criar uma análise com sucesso")
-    void shouldCreateAnalysisSuccessfully() throws Exception {
+    @DisplayName("Deve criar uma Pet Analysis com sucesso")
+    void shouldCreatePetAnalysisSuccessfully() throws Exception {
         petAnalysisRepository.deleteAll();
 
         String tokenString = tokenUtils.getToken(user.getEmail());
         Jwt jwt = tokenUtils.getJwt(tokenString, user, List.of("client"));
         when(jwtDecoder.decode(tokenString)).thenReturn(jwt);
 
+        MockMultipartFile mockImage = new MockMultipartFile(
+            "picture",
+            "user-picture.jpg",
+            "image/jpeg",
+            "fake-image-content".getBytes()
+        );
+
+        when(uploadImageService.uploadImg(mockImage)).thenReturn("image/png");
+
         mockMvc.perform(
                 MockMvcRequestBuilders.multipart("/pet-analysis/")
                     .file(mockImage)
                     .header("Authorization", "Bearer " + tokenString)
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .param("analysisType", AnalysisType.BREED.toString())
-                    .param("petId", "1")
+                    .contentType(MediaType.MULTIPART_FORM_DATA)
+                    .param("petId", String.valueOf(pet.getId()))
+                    .param("analysisType", "EMOTIONAL")
             )
-            .andExpect(MockMvcResultMatchers.status()
-                .isOk());
+            .andExpect(
+                MockMvcResultMatchers.status().isCreated());
+    }
+
+
+    @Test
+    @DisplayName("Deve falhar ao criar uma análise de pet com petId inválido")
+    void shouldFailToCreatePetAnalysisWithInvalidPetId() throws Exception {
+        petAnalysisRepository.deleteAll();
+
+        String tokenString = tokenUtils.getToken(user.getEmail());
+        Jwt jwt = tokenUtils.getJwt(tokenString, user, List.of("client"));
+        when(jwtDecoder.decode(tokenString)).thenReturn(jwt);
+
+        MockMultipartFile mockImage = new MockMultipartFile(
+            "picture",
+            "pet-picture.jpg",
+            "image/jpeg",
+            "fake-image-content".getBytes()
+        );
+
+        String requestBody = """
+            {
+                "petId": -1,
+                "analysisType": "EMOTIONAL"
+            }
+            """;
+
+        mockMvc.perform(
+                MockMvcRequestBuilders.multipart("/pet-analysis/")
+                    .file(mockImage)
+                    .header("Authorization", "Bearer " + tokenString)
+                    .contentType(MediaType.MULTIPART_FORM_DATA)
+                    .content(requestBody)
+            )
+            .andExpect(MockMvcResultMatchers.status().isBadRequest());
     }
 
     @Test
@@ -223,7 +282,7 @@ public class PetAnalysisControllerTest {
         when(jwtDecoder.decode(tokenString)).thenReturn(jwt);
 
         Long recommendationId = 1L;
-        mockMvc.perform(delete("/pet-analysis/{id}" + petAnalysis.getId())
+        mockMvc.perform(delete("/pet-analysis/{id}", petAnalysis.getId())
                 .header("Authorization", "Bearer " + tokenString))
             .andExpect(status().isNoContent());
     }

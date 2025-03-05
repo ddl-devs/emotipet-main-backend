@@ -42,7 +42,6 @@ import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
@@ -51,21 +50,12 @@ import org.springframework.test.web.servlet.result.MockMvcResultMatchers;
 
 @SpringBootTest
 @AutoConfigureMockMvc
-@TestPropertySource(properties = {
-    "AWS_BUCKET_NAME=emotipet-bucket"
-})
 @ActiveProfiles("test")
 @Import({SecurityTestConfig.class})
 public class RecommendationControllerTest {
 
     @Autowired
     private MockMvc mockMvc;
-
-    @MockitoBean
-    private KeycloakServiceImpl keycloakServiceImpl;
-
-    @MockitoBean
-    private RecommendationRequestsService recommendationRequestsService;
 
     @Autowired
     private RecommendationRepository recommendationRepository;
@@ -90,6 +80,12 @@ public class RecommendationControllerTest {
 
     @Autowired
     private TokenUtils tokenUtils;
+
+    @MockitoBean
+    private KeycloakServiceImpl keycloakServiceImpl;
+
+    @MockitoBean
+    private RecommendationRequestsService recommendationRequestsService;
 
     @MockitoBean
     MockMultipartFile mockImage = new MockMultipartFile(

@@ -19,6 +19,7 @@ import br.com.ifrn.ddldevs.pets_backend.dto.User.UserRequestDTO;
 import br.com.ifrn.ddldevs.pets_backend.dto.User.UserResponseDTO;
 import br.com.ifrn.ddldevs.pets_backend.dto.User.UserUpdateRequestDTO;
 import br.com.ifrn.ddldevs.pets_backend.dto.keycloak.KcUserResponseDTO;
+import br.com.ifrn.ddldevs.pets_backend.exception.ResourceNotFoundException;
 import br.com.ifrn.ddldevs.pets_backend.keycloak.KeycloakServiceImpl;
 import br.com.ifrn.ddldevs.pets_backend.mapper.PetMapper;
 import br.com.ifrn.ddldevs.pets_backend.mapper.UserMapper;
@@ -27,7 +28,6 @@ import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validation;
 import jakarta.validation.Validator;
 import jakarta.validation.ValidatorFactory;
-import jakarta.ws.rs.NotFoundException;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -39,7 +39,6 @@ import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.context.ActiveProfiles;
@@ -358,7 +357,7 @@ public class UserServiceTest {
     void getPetsUserNotFound() {
         when(userRepository.existsById(1L)).thenReturn(false);
 
-        assertThrows(NotFoundException.class,
+        assertThrows(ResourceNotFoundException.class,
             () -> userService.getPets("123"),
             "Usuário não encontrado");
     }
@@ -392,7 +391,7 @@ public class UserServiceTest {
         user.getPets().add(pet);
         user.getPets().add(pet2);
 
-        when(userRepository.findById(any())).thenReturn(Optional.of(user));
+        when(userRepository.findByKeycloakId(any())).thenReturn(Optional.of(user));
 
         PetResponseDTO petResponse1 = new PetResponseDTO(
             pet.getId(),
@@ -429,7 +428,7 @@ public class UserServiceTest {
         when(petMapper.toDTOList(user.getPets())).thenReturn(petResponses);
         List<PetResponseDTO> response = userService.getPets("1abc23");
 
-        verify(userRepository, times(1)).findById(1L);
+        verify(userRepository, times(1)).findByKeycloakId(any());
         verify(petMapper, times(1)).toDTOList(user.getPets());
 
         assertEquals(petResponses.getFirst().id(), response.getFirst().id());
