@@ -136,14 +136,18 @@ public class RecommendationControllerTest {
 
         pet = petMapper.toEntity(petRequest);
         pet.setUser(user);
-        pet = petRepository.save(pet);
-        System.out.println("pet.getId()" + pet.getId());
+        pet = petRepository.saveAndFlush(pet);
+
+        Pet savedPet = petRepository.findById(pet.getId())
+            .orElseThrow(() -> new RuntimeException("Pet not found"));
 
         RecommendationRequestDTO recommendationRequest = new RecommendationRequestDTO(
-            pet.getId(),
+            savedPet.getId(),
             RecommendationCategories.HEALTH
         );
+
         recommendation = recommendationMapper.toEntity(recommendationRequest);
+        recommendation.setPet(savedPet);
         recommendation = recommendationRepository.save(recommendation);
     }
 
@@ -193,15 +197,20 @@ public class RecommendationControllerTest {
         Jwt jwt = tokenUtils.getJwt(tokenString, user, List.of("client"));
         when(jwtDecoder.decode(tokenString)).thenReturn(jwt);
 
+        String requestBody = String.format("""
+            {
+                "petId": %d,
+                "categoryRecommendation": "HEALTH"
+            }
+            """, pet.getId());
+
         mockMvc.perform(
-                MockMvcRequestBuilders.multipart("/recommendations/")
+                MockMvcRequestBuilders.post("/recommendations/")
                     .header("Authorization", "Bearer " + tokenString)
                     .contentType(MediaType.APPLICATION_JSON)
-                    .param("petId", pet.getId().toString())
-                    .param("categoryRecommendation", RecommendationCategories.HEALTH.toString())
+                    .content(requestBody)
             )
-            .andExpect(MockMvcResultMatchers.status()
-                .isOk());
+            .andExpect(MockMvcResultMatchers.status().isCreated());
     }
 
     @Test
@@ -223,8 +232,7 @@ public class RecommendationControllerTest {
         Jwt jwt = tokenUtils.getJwt(tokenString, user, List.of("client"));
         when(jwtDecoder.decode(tokenString)).thenReturn(jwt);
 
-        Long recommendationId = 1L;
-        mockMvc.perform(delete("/recommendations/{id}" + recommendation.getId())
+        mockMvc.perform(delete("/recommendations/{id}", recommendation.getId())
                 .header("Authorization", "Bearer " + tokenString))
             .andExpect(status().isNoContent());
     }
