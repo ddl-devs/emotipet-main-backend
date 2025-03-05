@@ -32,6 +32,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      args:
+        - NO_CACHE=true
     container_name: emotipet-backend
     ports:
       - "8080:8080"
@@ -39,17 +41,6 @@ services:
       - postgres
     env_file:
       - ./spring.env
-
-  nginx:
-    image: nginx:latest
-    depends_on:
-      - emotipet-backend
-    ports:
-      - 80:80
-      - 443:443
-    volumes:
-      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf
-      - /etc/letsencrypt:/etc/letsencrypt:ro
       
 volumes:
   postgres-data:

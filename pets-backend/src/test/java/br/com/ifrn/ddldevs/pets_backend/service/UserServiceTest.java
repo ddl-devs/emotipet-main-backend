@@ -426,6 +426,7 @@ public class UserServiceTest {
         petResponses.add(petResponse2);
 
         when(petMapper.toDTOList(user.getPets())).thenReturn(petResponses);
+        when(userRepository.findByKeycloakId(any())).thenReturn(Optional.of(user));
         List<PetResponseDTO> response = userService.getPets("1abc23");
 
         verify(userRepository, times(1)).findByKeycloakId(any());

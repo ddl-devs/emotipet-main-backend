@@ -1,4 +1,4 @@
-name: CI for pets-backend
+name: CI/CD for pets-backend
 
 on:
   push:
@@ -35,3 +35,58 @@ jobs:
       - name: Run tests with Maven
         run: mvn clean verify -f pets-backend/pom.xml
 
+  deploy:
+    needs: build-and-test
+    if: github.ref == 'refs/heads/main' 
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up SSH key
+        run: |
+          mkdir -p ~/.ssh
+          echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H $EC2_HOST >> ~/.ssh/known_hosts
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.EC2_SSH_KEY }}
+          EC2_HOST: ${{ secrets.EC2_HOST }}
+
+      - name: Deploy to EC2
+        run: |
+          ssh ${{ secrets.USER }}@${{ secrets.EC2_HOST }} << 'EOF'
+            set -e
+            
+            APP_DIR="/home/ubuntu/emotipet-main-backend/pets-backend"
+            
+            if [ -d "$APP_DIR" ]; then
+              cd $APP_DIR
+              git checkout main
+              git pull
+            else
+              git clone https://github.com/ddl-devs/emotipet-main-backend.git
+              cd $APP_DIR
+              git checkout main
+            fi
+
+            sudo cp /home/ubuntu/spring.env $APP_DIR/spring.env
+
+            CONTAINER_NAME="emotipet-backend"
+            IMAGE_NAME="pets-backend-emotipet-backend"
+            
+            if docker ps -a --format '{{.Names}}' | grep -q "$CONTAINER_NAME"; then
+              sudo docker stop $CONTAINER_NAME
+              sudo docker rm -f $CONTAINER_NAME
+            fi
+            
+            IMAGE_ID=$(docker images -q $IMAGE_NAME)
+            if [ -n "$IMAGE_ID" ]; then
+              sudo docker rmi -f $IMAGE_ID
+            fi
+
+            sudo docker builder prune -f
+            
+            sudo docker compose -f docker-compose-prod.yml up -d 
+          EOF

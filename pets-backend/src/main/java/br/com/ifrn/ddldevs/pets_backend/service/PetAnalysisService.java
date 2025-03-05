@@ -6,6 +6,7 @@ import br.com.ifrn.ddldevs.pets_backend.amazonSqs.SQSSenderService;
 import br.com.ifrn.ddldevs.pets_backend.domain.Enums.AnalysisStatus;
 import br.com.ifrn.ddldevs.pets_backend.domain.Pet;
 import br.com.ifrn.ddldevs.pets_backend.domain.PetAnalysis;
+import br.com.ifrn.ddldevs.pets_backend.domain.Recommendation;
 import br.com.ifrn.ddldevs.pets_backend.dto.PetAnalysis.PetAnalysisRequestDTO;
 import br.com.ifrn.ddldevs.pets_backend.dto.PetAnalysis.PetAnalysisResponseDTO;
 import br.com.ifrn.ddldevs.pets_backend.exception.AccessDeniedException;
@@ -13,9 +14,18 @@ import br.com.ifrn.ddldevs.pets_backend.exception.ResourceNotFoundException;
 import br.com.ifrn.ddldevs.pets_backend.mapper.PetAnalysisMapper;
 import br.com.ifrn.ddldevs.pets_backend.repository.PetAnalysisRepository;
 import br.com.ifrn.ddldevs.pets_backend.repository.PetRepository;
+
+import java.time.LocalDate;
 import java.util.List;
+
+import br.com.ifrn.ddldevs.pets_backend.specifications.AnalysisSpec;
 import lombok.RequiredArgsConstructor;
+import org.hibernate.validator.internal.util.privilegedactions.LoadClass;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cglib.core.Local;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -113,7 +123,8 @@ public class PetAnalysisService {
         petAnalysisRepository.deleteById(id);
     }
 
-    public List<PetAnalysisResponseDTO> getAllByPetId(Long id, String loggedUserKeycloakId) {
+    public Page<PetAnalysisResponseDTO> getAllByPetId(Long id, String loggedUserKeycloakId,
+                                                      LocalDate startDate, LocalDate endDate, AnalysisType type, String result, Pageable pageable) {
         if (id == null) {
             throw new IllegalArgumentException("ID não pode ser nulo");
         }
@@ -121,14 +132,20 @@ public class PetAnalysisService {
             throw new IllegalArgumentException("ID não pode ser negativo");
         }
 
-        List<PetAnalysis> petAnalyses = petAnalysisRepository.findAllByPetId(id);
-
         Pet pet = petRepository.findById(id)
             .orElseThrow(() -> new ResourceNotFoundException("Pet não encontrado"));
 
         validatePetOwnershipOrAdmin(pet, loggedUserKeycloakId);
 
-        return petAnalysisMapper.toResponseList(petAnalyses);
+        Specification<PetAnalysis> spec = Specification.where(AnalysisSpec.hasPetId(id))
+                .and(AnalysisSpec.hasAnalysisType(type))
+                .and(AnalysisSpec.hasStartDateAfter(startDate))
+                .and(AnalysisSpec.hasEndDateBefore(endDate))
+                .and(AnalysisSpec.hasResultContaining(result));
+
+        Page<PetAnalysis> petAnalyses = petAnalysisRepository.findAll(spec, pageable);
+
+        return petAnalyses.map(petAnalysisMapper::toResponse);
     }
 
     public PetAnalysisResponseDTO getPetAnalysis(Long analysisId, String loggedUserKeycloakId) {

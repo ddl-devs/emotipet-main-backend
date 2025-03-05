@@ -18,11 +18,13 @@ import br.com.ifrn.ddldevs.pets_backend.microservice.RecommendationRequestsServi
 import br.com.ifrn.ddldevs.pets_backend.repository.PetRepository;
 import br.com.ifrn.ddldevs.pets_backend.repository.RecommendationRepository;
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
+import br.com.ifrn.ddldevs.pets_backend.specifications.RecommendationSpec;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.exc.InvalidFormatException;
 import org.junit.jupiter.api.BeforeEach;
@@ -30,6 +32,12 @@ import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
+import org.springframework.cglib.core.Local;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -353,29 +361,36 @@ class RecommendationsServiceTest {
         List<Recommendation> recommendations = new ArrayList<>();
         recommendations.add(recommendation);
 
-        when(recommendationRepository.findAllByPetId(1L)).thenReturn(recommendations);
-        when(petRepository.findById(1L)).thenReturn(Optional.of(pet));
-        when(recommendationMapper.toDTOList(recommendations)).thenReturn(new ArrayList<>());
+        Specification<Recommendation> spec = Specification.where(RecommendationSpec.hasPetId(1L))
+                .or(RecommendationSpec.hasCategory("HEALTH"));
 
-        List<RecommendationResponseDTO> response = recommendationService.getAllByPetId(1L,
-            loggedUserKeycloakId);
+        Pageable pageable = PageRequest.of(0, 10);
+        Page<Recommendation> recommendationPage = new PageImpl<>(recommendations, pageable, recommendations.size());
+
+        when(petRepository.findById(1L)).thenReturn(Optional.of(pet));
+        when(recommendationRepository.findAll(any(Specification.class), any(Pageable.class))).thenReturn(recommendationPage);
+
+        Page<RecommendationResponseDTO> response = recommendationService.getAllByPetId(1L, loggedUserKeycloakId, pageable, "HEALTH"
+                , LocalDate.now(), LocalDate.of(2030, 10, 5));
 
         assertNotNull(response);
-        verify(recommendationRepository).findAllByPetId(1L);
+        verify(recommendationRepository).findAll(any(Specification.class), any(Pageable.class));
     }
 
     @Test
     void getRecommendationByPetWithInvalidId() {
         assertThrows(IllegalArgumentException.class,
-            () -> recommendationService.getAllByPetId(-1L, loggedUserKeycloakId),
-            "ID não pode ser negativo");
+                () -> recommendationService.getAllByPetId(-1L, loggedUserKeycloakId, PageRequest.of(0,
+                        10), "HEALTH", LocalDate.now(), LocalDate.of(2030, 10, 5)),
+                "ID não pode ser negativo");
     }
 
     @Test
     void getRecommendationByPetWithNullId() {
         assertThrows(IllegalArgumentException.class,
-            () -> recommendationService.getAllByPetId(null, loggedUserKeycloakId),
-            "ID não pode ser nulo");
+                () -> recommendationService.getAllByPetId(null, loggedUserKeycloakId,
+                        PageRequest.of(0, 10), "HEALTH", LocalDate.now(), LocalDate.of(2030, 10, 5)),
+                "ID não pode ser nulo");
     }
 
     @Test
@@ -384,7 +399,8 @@ class RecommendationsServiceTest {
 
         assertThrows(
                 ResourceNotFoundException.class,
-                () -> recommendationService.getAllByPetId(999L, loggedUserKeycloakId)
+                () -> recommendationService.getAllByPetId(999L, loggedUserKeycloakId,
+                        PageRequest.of(0, 10), "HEALTH", LocalDate.now(), LocalDate.of(2030, 10, 5))
         );
     }
 
@@ -409,9 +425,10 @@ class RecommendationsServiceTest {
 
         assertThrows(
                 AccessDeniedException.class,
-                () -> recommendationService.getAllByPetId(1L, "NotOwner")
+                () -> recommendationService.getAllByPetId(1L, "NotOwner",
+                        PageRequest.of(0, 10), "HEALTH", LocalDate.now(), LocalDate.of(2030, 10, 5))
         );
-    };
+    }
 
     // d
 
