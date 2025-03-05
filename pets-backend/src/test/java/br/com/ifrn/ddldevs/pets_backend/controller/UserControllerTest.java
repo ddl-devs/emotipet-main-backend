@@ -168,13 +168,24 @@ public class UserControllerTest {
     }
 
     @Test
+    @DisplayName("Deve falhar ao buscar usuário por ID com token de client")
+    void shouldFailToGetUserByIdWithClientToken() throws Exception {
+        String tokenString = tokenUtils.getToken(user.getEmail());
+        Jwt jwt = tokenUtils.getJwt(tokenString, user, List.of("client"));
+        when(jwtDecoder.decode(tokenString)).thenReturn(jwt);
+
+        mockMvc.perform(
+                MockMvcRequestBuilders.get("/users/{id}", user.getId())
+                    .header("Authorization", "Bearer " + tokenString)
+            )
+            .andExpect(MockMvcResultMatchers.status().isForbidden());
+    }
+
+
+    @Test
     @DisplayName("Deve criar um usuário com sucesso")
     void shouldCreateUserSuccessfully() throws Exception {
         userRepository.deleteAll();
-
-        String tokenString = tokenUtils.getToken(user.getEmail());
-        Jwt jwt = tokenUtils.getJwt(tokenString, user, List.of("admin"));
-        when(jwtDecoder.decode(tokenString)).thenReturn(jwt);
 
         MockMultipartFile mockImage = new MockMultipartFile(
             "file",
@@ -195,8 +206,7 @@ public class UserControllerTest {
 
         mockMvc.perform(
                 MockMvcRequestBuilders.multipart("/users/")
-                    .file(mockImage) // Enviar o arquivo de imagem
-                    .header("Authorization", "Bearer " + tokenString)
+                    .file(mockImage)
                     .contentType(MediaType.MULTIPART_FORM_DATA)
                     .param("username", "john")
                     .param("email", "john@example.com")

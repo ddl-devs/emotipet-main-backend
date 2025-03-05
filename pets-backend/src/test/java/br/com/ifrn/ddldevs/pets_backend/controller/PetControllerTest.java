@@ -171,6 +171,17 @@ public class PetControllerTest {
     }
 
     @Test
+    @DisplayName("Deve falhar na criação de um pet sem autenticação")
+    void shouldFailToCreatePetWithoutAuthentication() throws Exception {
+        mockMvc.perform(post("/pets/")
+                .contentType(MediaType.MULTIPART_FORM_DATA)
+                .param("name", "Buddy")
+                .param("species", "DOG")
+                .param("gender", "MALE"))
+            .andExpect(status().isUnauthorized());
+    }
+
+    @Test
     @DisplayName("Deve buscar um pet com sucesso")
     void shouldGetPetSuccessfully() throws Exception {
         String tokenString = tokenUtils.getToken(user.getEmail());

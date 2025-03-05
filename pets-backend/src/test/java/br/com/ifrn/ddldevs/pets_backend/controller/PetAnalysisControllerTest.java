@@ -228,6 +228,28 @@ public class PetAnalysisControllerTest {
                 MockMvcResultMatchers.status().isCreated());
     }
 
+    @Test
+    @DisplayName("Deve falhar ao criar uma Pet Analysis sem autenticação")
+    void shouldFailToCreatePetAnalysisWithoutAuthentication() throws Exception {
+        petAnalysisRepository.deleteAll();
+
+        MockMultipartFile mockImage = new MockMultipartFile(
+            "picture",
+            "user-picture.jpg",
+            "image/jpeg",
+            "fake-image-content".getBytes()
+        );
+
+        mockMvc.perform(
+                MockMvcRequestBuilders.multipart("/pet-analysis/")
+                    .file(mockImage)
+                    .contentType(MediaType.MULTIPART_FORM_DATA)
+                    .param("petId", String.valueOf(pet.getId()))
+                    .param("analysisType", "EMOTIONAL")
+            )
+            .andExpect(
+                MockMvcResultMatchers.status().isUnauthorized());
+    }
 
     @Test
     @DisplayName("Deve falhar ao criar uma análise de pet com petId inválido")

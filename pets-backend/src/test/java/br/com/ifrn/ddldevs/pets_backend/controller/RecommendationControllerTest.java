@@ -210,6 +210,24 @@ public class RecommendationControllerTest {
     }
 
     @Test
+    @DisplayName("Deve falhar ao tentar criar uma recomendação sem autenticação")
+    void shouldFailToCreateRecommendationWithoutAuthentication() throws Exception {
+        String requestBody = String.format("""
+            {
+                "petId": %d,
+                "categoryRecommendation": "HEALTH"
+            }
+            """, pet.getId());
+
+        mockMvc.perform(
+                MockMvcRequestBuilders.post("/recommendations/")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(requestBody)
+            )
+            .andExpect(MockMvcResultMatchers.status().isUnauthorized());
+    }
+
+    @Test
     @DisplayName("Deve buscar uma recomendação com sucesso")
     void shouldGetRecommendationSuccessfully() throws Exception {
         String tokenString = tokenUtils.getToken(user.getEmail());
