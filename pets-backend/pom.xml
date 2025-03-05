@@ -222,31 +222,48 @@
                     </compilerArgs>
                 </configuration>
             </plugin>
-            <!-- Jacoco -->
             <plugin>
                 <groupId>org.jacoco</groupId>
                 <artifactId>jacoco-maven-plugin</artifactId>
-                <version>0.8.10</version>
+                <version>0.8.10</version> <!-- Use latest version -->
                 <executions>
                     <execution>
-                        <goals>
-                            <goal>prepare-agent</goal>
-                        </goals>
-                    </execution>
-                    <execution>
                         <id>report</id>
-                        <phase>verify</phase>
                         <goals>
                             <goal>report</goal>
                         </goals>
                     </execution>
                 </executions>
+                <configuration>
+                    <excludes>
+                        <exclude>br/com/ifrn/ddldevs/pets_backend/awsConfig/*</exclude>
+                        <exclude>br/com/ifrn/ddldevs/pets_backend/microservice/*</exclude>
+                        <exclude>br/com/ifrn/ddldevs/pets_backend/amazonSqs/*</exclude>
+                        <exclude>br/com/ifrn/ddldevs/pets_backend/exception/*</exclude>
+                        <exclude>br/com/ifrn/ddldevs/pets_backend/specifications/*</exclude>
+                        <exclude>br/com/ifrn/ddldevs/pets_backend/validator/*</exclude>
+                        <exclude>br/com/ifrn/ddldevs/pets_backend/domain/*</exclude>
+                        <exclude>br/com/ifrn/ddldevs/pets_backend/keycloak/*</exclude>
+                        <exclude>br/com/ifrn/ddldevs/pets_backend/security/*</exclude>
+                        <exclude>br/com/ifrn/ddldevs/pets_backend/mapper/*</exclude>
+                        <exclude>br/com/ifrn/ddldevs/pets_backend/PetsBackendApplication*</exclude>
+                    </excludes>
+                </configuration>
             </plugin>
             <!-- Mutation Tests Pitest -->
             <plugin>
                 <groupId>org.pitest</groupId>
                 <artifactId>pitest-maven</artifactId>
                 <version>1.15.3</version>
+                <configuration>
+                    <targetClasses>
+                        <param>br.com.ifrn.ddldevs.pets_backend.service.*</param>
+                        <param>br.com.ifrn.ddldevs.pets_backend.controller.*</param>
+                    </targetClasses>
+                    <excludedClasses>
+                        <param>br.com.ifrn.ddldevs.pets_backend.service.UploadImageService</param>
+                    </excludedClasses>
+                </configuration>
                 <dependencies>
                     <dependency>
                         <groupId>org.pitest</groupId>
