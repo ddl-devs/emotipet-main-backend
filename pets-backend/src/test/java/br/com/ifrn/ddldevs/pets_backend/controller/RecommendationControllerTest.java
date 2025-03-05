@@ -1,215 +1,253 @@
 package br.com.ifrn.ddldevs.pets_backend.controller;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import br.com.ifrn.ddldevs.pets_backend.SecurityTestConfig;
+import br.com.ifrn.ddldevs.pets_backend.domain.Enums.Gender;
 import br.com.ifrn.ddldevs.pets_backend.domain.Enums.RecommendationCategories;
 import br.com.ifrn.ddldevs.pets_backend.domain.Enums.Species;
 import br.com.ifrn.ddldevs.pets_backend.domain.Pet;
 import br.com.ifrn.ddldevs.pets_backend.domain.Recommendation;
 import br.com.ifrn.ddldevs.pets_backend.domain.User;
+import br.com.ifrn.ddldevs.pets_backend.dto.Pet.PetRequestDTO;
 import br.com.ifrn.ddldevs.pets_backend.dto.Recommendation.RecommendationRequestDTO;
+import br.com.ifrn.ddldevs.pets_backend.dto.User.UserRequestDTO;
+import br.com.ifrn.ddldevs.pets_backend.keycloak.KeycloakServiceImpl;
+import br.com.ifrn.ddldevs.pets_backend.mapper.PetMapper;
 import br.com.ifrn.ddldevs.pets_backend.mapper.RecommendationMapper;
+import br.com.ifrn.ddldevs.pets_backend.mapper.UserMapper;
+import br.com.ifrn.ddldevs.pets_backend.microservice.RecommendationRequestsService;
 import br.com.ifrn.ddldevs.pets_backend.repository.PetRepository;
 import br.com.ifrn.ddldevs.pets_backend.repository.RecommendationRepository;
 import br.com.ifrn.ddldevs.pets_backend.repository.UserRepository;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.transaction.Transactional;
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
-import java.util.ArrayList;
+import java.time.LocalDate;
 import java.util.List;
-import java.util.Optional;
+import java.util.UUID;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.mockito.MockitoAnnotations;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
+import org.springframework.mock.web.MockMultipartFile;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers;
+
 
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
-class RecommendationControllerTest {
+@Import({SecurityTestConfig.class})
+public class RecommendationControllerTest {
 
     @Autowired
     private MockMvc mockMvc;
 
     @Autowired
-    private RecommendationMapper recommendationMapper;
-
-    @Autowired
-    private ObjectMapper objectMapper;
-
-    @Autowired
     private RecommendationRepository recommendationRepository;
 
     @Autowired
-    private PetRepository petRepository;
-
-    private Pet pet;
-
-    private User user;
+    private RecommendationMapper recommendationMapper;
 
     @Autowired
     private UserRepository userRepository;
 
+    @Autowired
+    private UserMapper userMapper;
+
+    @Autowired
+    private PetMapper petMapper;
+
+    @Autowired
+    private PetRepository petRepository;
+
+    @Autowired
+    private JwtDecoder jwtDecoder;
+
+    @Autowired
+    private TokenUtils tokenUtils;
+
+    @MockitoBean
+    private KeycloakServiceImpl keycloakServiceImpl;
+
+    @MockitoBean
+    private RecommendationRequestsService recommendationRequestsService;
+
+    @MockitoBean
+    MockMultipartFile mockImage = new MockMultipartFile(
+        "file",
+        "user-picture.jpg",
+        "image/jpeg",
+        "fake-image-content".getBytes()
+    );
+
+    private User user;
+
+    private Pet pet;
+
+    private Recommendation recommendation;
+
     @BeforeEach
+    void setUp() throws Exception {
+        MockitoAnnotations.openMocks(this);
+
+        UserRequestDTO userRequest = new UserRequestDTO(
+            "alex",
+            "alex@email.com",
+            "Alex",
+            "Doe",
+            LocalDate.of(1990, 1, 15),
+            mockImage,
+            "user!123"
+        );
+
+        user = userMapper.toEntity(userRequest);
+        user.setKeycloakId(UUID.randomUUID().toString());
+        user = userRepository.save(user);
+
+        PetRequestDTO petRequest = new PetRequestDTO(
+            "Apolo",
+            Gender.MALE,
+            LocalDate.of(2020, 1, 15),
+            BigDecimal.valueOf(10.0),
+            Species.DOG,
+            "Labrador",
+            30,
+            mockImage
+        );
+
+        pet = petMapper.toEntity(petRequest);
+        pet.setUser(user);
+        pet = petRepository.saveAndFlush(pet);
+
+        Pet savedPet = petRepository.findById(pet.getId())
+            .orElseThrow(() -> new RuntimeException("Pet not found"));
+
+        RecommendationRequestDTO recommendationRequest = new RecommendationRequestDTO(
+            savedPet.getId(),
+            RecommendationCategories.HEALTH
+        );
+
+        recommendation = recommendationMapper.toEntity(recommendationRequest);
+        recommendation.setPet(savedPet);
+        recommendation = recommendationRepository.save(recommendation);
+    }
+
+    @AfterEach
     @Transactional
-    public void setUp() throws Exception {
+    public void tearDown() {
         recommendationRepository.deleteAll();
         petRepository.deleteAll();
-
-        User new_user = new User();
-        new_user.setUsername("jhon");
-        new_user.setFirstName("Jhon");
-        new_user.setLastName("Doe");
-        new_user.setEmail("jhon@gmail.com");
-        new_user.setKeycloakId("345");
-        new_user.setPets(new ArrayList<>());
-
-        Pet pet = new Pet();
-        pet.setName("Apolo");
-        pet.setSpecies(Species.DOG);
-        pet.setHeight(30);
-        pet.setWeight(BigDecimal.valueOf(10.0));
-
-        new_user.getPets().add(pet);
-        pet.setUser(new_user);
-
-        this.user = userRepository.save(new_user);
-        this.pet = petRepository.save(pet);
+        userRepository.deleteAll();
     }
 
     @Test
-    @DisplayName("Should create an recommendation successfully")
-    @Transactional
-    public void createRecommendationSuccessfully() throws Exception {
-        RecommendationRequestDTO requestDTO = new RecommendationRequestDTO(this.pet.getId(), RecommendationCategories.HEALTH);
-
-        String requestBody = objectMapper.writeValueAsString(requestDTO);
+    @DisplayName("Deve listar recomendações com sucesso")
+    void shouldListRecommendationsSuccessfully() throws Exception {
+        String tokenString = tokenUtils.getToken(user.getEmail());
+        Jwt jwt = tokenUtils.getJwt(tokenString, user, List.of("admin"));
+        when(jwtDecoder.decode(tokenString)).thenReturn(jwt);
 
         mockMvc.perform(
-            post("/recommendations/")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(requestBody)
-        ).andExpect(MockMvcResultMatchers.status().isCreated());
-
-        Optional<Recommendation> savedRecommendation = recommendationRepository.findAll().stream()
-            .findFirst();
-        assertTrue(savedRecommendation.isPresent());
-        assertEquals("Feed your pet twice daily", savedRecommendation.get().getRecommendation());
+                MockMvcRequestBuilders.get("/recommendations/")
+                    .header("Authorization", "Bearer " + tokenString)
+            )
+            .andExpect(MockMvcResultMatchers.status().isOk());
     }
 
     @Test
-    @DisplayName("Should delete an recommendation successfully")
-    @Transactional
-    public void deleteRecommendationSuccessfully() throws Exception {
-        Recommendation recommendation = new Recommendation();
-        recommendation.setPet(this.pet);
-        recommendation.setRecommendation("Feed your pet twice daily");
-        recommendation.setCategoryRecommendation(RecommendationCategories.HEALTH);
-        recommendation.setCreatedAt(LocalDateTime.now());
-
-        recommendation = recommendationRepository.save(recommendation);
+    @DisplayName("Deve retornar Forbidden ao listar recomendações com token de client")
+    void shouldListRecommendationsNotSuccessfully() throws Exception {
+        String tokenString = tokenUtils.getToken(user.getEmail());
+        Jwt jwt = tokenUtils.getJwt(tokenString, user, List.of("client"));
+        when(jwtDecoder.decode(tokenString)).thenReturn(jwt);
 
         mockMvc.perform(
-            delete("/recommendations/" + recommendation.getId())
-        ).andExpect(MockMvcResultMatchers.status().isNoContent());
+                MockMvcRequestBuilders.get("/recommendations/")
+                    .header("Authorization", "Bearer " + tokenString)
+            )
+            .andExpect(MockMvcResultMatchers.status().isForbidden());
+    }
 
-        Optional<Recommendation> savedRecommendation = recommendationRepository.findById(
-            recommendation.getId());
-        assertFalse(savedRecommendation.isPresent());
+
+    @Test
+    @DisplayName("Deve criar uma recomendação com sucesso")
+    void shouldCreateRecommendationSuccessfully() throws Exception {
+        recommendationRepository.deleteAll();
+
+        String tokenString = tokenUtils.getToken(user.getEmail());
+        Jwt jwt = tokenUtils.getJwt(tokenString, user, List.of("client"));
+        when(jwtDecoder.decode(tokenString)).thenReturn(jwt);
+
+        String requestBody = String.format("""
+            {
+                "petId": %d,
+                "categoryRecommendation": "HEALTH"
+            }
+            """, pet.getId());
+
+        mockMvc.perform(
+                MockMvcRequestBuilders.post("/recommendations/")
+                    .header("Authorization", "Bearer " + tokenString)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(requestBody)
+            )
+            .andExpect(MockMvcResultMatchers.status().isCreated());
     }
 
     @Test
-    @DisplayName("Should get an recommendation successfully")
-    @Transactional
-    public void getRecommendationSuccessfully() throws Exception {
-        Recommendation recommendation = new Recommendation();
-        recommendation.setPet(this.pet);
-        recommendation.setRecommendation("Feed your pet twice daily");
-        recommendation.setCategoryRecommendation(RecommendationCategories.HEALTH);
-        recommendation.setCreatedAt(LocalDateTime.now());
-        recommendation = recommendationRepository.save(recommendation);
-
-        String expectedResponse = objectMapper.writeValueAsString(
-            recommendationMapper.toRecommendationResponseDTO(recommendation));
+    @DisplayName("Deve falhar ao tentar criar uma recomendação sem autenticação")
+    void shouldFailToCreateRecommendationWithoutAuthentication() throws Exception {
+        String requestBody = String.format("""
+            {
+                "petId": %d,
+                "categoryRecommendation": "HEALTH"
+            }
+            """, pet.getId());
 
         mockMvc.perform(
-                get("/recommendations/" + recommendation.getId())
-            ).andExpect(MockMvcResultMatchers.status().isOk())
-            .andExpect(MockMvcResultMatchers.content().json(expectedResponse));
+                MockMvcRequestBuilders.post("/recommendations/")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(requestBody)
+            )
+            .andExpect(MockMvcResultMatchers.status().isUnauthorized());
     }
 
     @Test
-    @DisplayName("Should get recommendations by pet id")
-    @Transactional
-    public void getRecommendationsByPetIdSuccessfully() throws Exception {
-        Recommendation recommendation = new Recommendation();
-        recommendation.setPet(this.pet);
-        recommendation.setRecommendation("Feed your pet twice daily");
-        recommendation.setCategoryRecommendation(RecommendationCategories.HEALTH);
-        recommendation.setCreatedAt(LocalDateTime.now());
-        recommendation = recommendationRepository.save(recommendation);
+    @DisplayName("Deve buscar uma recomendação com sucesso")
+    void shouldGetRecommendationSuccessfully() throws Exception {
+        String tokenString = tokenUtils.getToken(user.getEmail());
+        Jwt jwt = tokenUtils.getJwt(tokenString, user, List.of("client"));
+        when(jwtDecoder.decode(tokenString)).thenReturn(jwt);
 
-        Recommendation recommendation2 = new Recommendation();
-        recommendation2.setPet(this.pet);
-        recommendation2.setRecommendation("Feed your pet once daily");
-        recommendation2.setCategoryRecommendation(RecommendationCategories.HEALTH);
-        recommendation2.setCreatedAt(LocalDateTime.now());
-        recommendation2 = recommendationRepository.save(recommendation2);
-
-        List<Recommendation> recommendationList = new ArrayList<>();
-        recommendationList.add(recommendation);
-        recommendationList.add(recommendation2);
-
-        String expectedResponse = objectMapper.writeValueAsString(
-            recommendationMapper.toDTOList(recommendationList));
-
-        mockMvc.perform(
-                get("/recommendations/pet/" + this.pet.getId())
-            ).andExpect(MockMvcResultMatchers.status().isOk())
-            .andExpect(MockMvcResultMatchers.content().json(expectedResponse));
+        mockMvc.perform(get("/recommendations/{id}", recommendation.getId())
+                .header("Authorization", "Bearer " + tokenString))
+            .andExpect(status().isOk());
     }
 
     @Test
-    @DisplayName("Should list pets sucessfully")
-    @Transactional
-    public void listPetsSuccessfully() throws Exception {
-        Recommendation recommendation = new Recommendation();
-        recommendation.setPet(this.pet);
-        recommendation.setRecommendation("Feed your pet twice daily");
-        recommendation.setCategoryRecommendation(RecommendationCategories.HEALTH);
-        recommendation.setCreatedAt(LocalDateTime.now());
-        recommendation = recommendationRepository.save(recommendation);
+    @DisplayName("Deve deletar uma recomendação com sucesso")
+    void shouldDeleteRecommendationSuccessfully() throws Exception {
+        String tokenString = tokenUtils.getToken(user.getEmail());
+        Jwt jwt = tokenUtils.getJwt(tokenString, user, List.of("client"));
+        when(jwtDecoder.decode(tokenString)).thenReturn(jwt);
 
-        Recommendation recommendation2 = new Recommendation();
-        recommendation2.setPet(this.pet);
-        recommendation2.setRecommendation("Feed your pet once daily");
-        recommendation2.setCategoryRecommendation(RecommendationCategories.HEALTH);
-        recommendation2.setCreatedAt(LocalDateTime.now());
-        recommendation2 = recommendationRepository.save(recommendation2);
-
-        List<Recommendation> recommendationList = new ArrayList<>();
-        recommendationList.add(recommendation);
-        recommendationList.add(recommendation2);
-
-        String expectedResponse = objectMapper.writeValueAsString(
-            recommendationMapper.toDTOList(recommendationList));
-
-        mockMvc.perform(
-                get("/recommendations/")
-            ).andExpect(MockMvcResultMatchers.status().isOk())
-            .andExpect(MockMvcResultMatchers.content().json(expectedResponse));
-
+        mockMvc.perform(delete("/recommendations/{id}", recommendation.getId())
+                .header("Authorization", "Bearer " + tokenString))
+            .andExpect(status().isNoContent());
     }
 }

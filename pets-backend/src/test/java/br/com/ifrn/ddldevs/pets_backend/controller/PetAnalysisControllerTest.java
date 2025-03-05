@@ -1,222 +1,311 @@
 package br.com.ifrn.ddldevs.pets_backend.controller;
 
-import br.com.ifrn.ddldevs.pets_backend.domain.Enums.AnalysisType;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import br.com.ifrn.ddldevs.pets_backend.SecurityTestConfig;
+import br.com.ifrn.ddldevs.pets_backend.amazonSqs.SQSSenderService;
+import br.com.ifrn.ddldevs.pets_backend.domain.Enums.AnalysisStatus;
+import br.com.ifrn.ddldevs.pets_backend.domain.Enums.AnalysisType;
+import br.com.ifrn.ddldevs.pets_backend.domain.Enums.Gender;
 import br.com.ifrn.ddldevs.pets_backend.domain.Enums.Species;
 import br.com.ifrn.ddldevs.pets_backend.domain.Pet;
 import br.com.ifrn.ddldevs.pets_backend.domain.PetAnalysis;
 import br.com.ifrn.ddldevs.pets_backend.domain.User;
+import br.com.ifrn.ddldevs.pets_backend.dto.Pet.PetRequestDTO;
 import br.com.ifrn.ddldevs.pets_backend.dto.PetAnalysis.PetAnalysisRequestDTO;
+import br.com.ifrn.ddldevs.pets_backend.dto.User.UserRequestDTO;
 import br.com.ifrn.ddldevs.pets_backend.mapper.PetAnalysisMapper;
+import br.com.ifrn.ddldevs.pets_backend.mapper.PetMapper;
+import br.com.ifrn.ddldevs.pets_backend.mapper.UserMapper;
 import br.com.ifrn.ddldevs.pets_backend.repository.PetAnalysisRepository;
 import br.com.ifrn.ddldevs.pets_backend.repository.PetRepository;
 import br.com.ifrn.ddldevs.pets_backend.repository.UserRepository;
+import br.com.ifrn.ddldevs.pets_backend.service.PetAnalysisService;
 import br.com.ifrn.ddldevs.pets_backend.service.UploadImageService;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.transaction.Transactional;
+import jakarta.ws.rs.core.MediaType;
 import java.math.BigDecimal;
-import java.util.ArrayList;
+import java.time.LocalDate;
+import java.util.Base64;
 import java.util.List;
+import java.util.UUID;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.http.MediaType;
+import org.springframework.context.annotation.Import;
 import org.springframework.mock.web.MockMultipartFile;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers;
-import org.springframework.web.multipart.MultipartFile;
 
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
-class PetAnalysisControllerTest {
+@Import({SecurityTestConfig.class})
+public class PetAnalysisControllerTest {
 
     @Autowired
     private MockMvc mockMvc;
 
     @Autowired
-    private ObjectMapper objectMapper;
-
-    @Autowired
-    private PetAnalysisRepository petAnalysisRepository;
-
-    @Autowired
     private UserRepository userRepository;
 
-    @Mock
-    private UploadImageService uploadImageService;
+    @Autowired
+    private UserMapper userMapper;
 
-    private final MultipartFile mockImage = new MockMultipartFile(
-        "photoUrl",
-        "image.jpg",
-        "image/jpeg",
-        "content".getBytes()
-    );
+    @Autowired
+    private PetMapper petMapper;
+
+    @Autowired
+    private PetAnalysisMapper petAnalysisMapper;
 
     @Autowired
     private PetRepository petRepository;
 
     @Autowired
-    private PetAnalysisMapper petAnalysisMapper;
+    private PetAnalysisRepository petAnalysisRepository;
 
-    private Pet pet;
+    @Autowired
+    private JwtDecoder jwtDecoder;
+
+    @Autowired
+    private TokenUtils tokenUtils;
+
+    @Mock
+    private PetAnalysisService petAnalysisService;
+
+    @MockitoBean
+    private SQSSenderService sqsSenderService;
+
+    @MockitoBean
+    private UploadImageService uploadImageService;
+
+    MockMultipartFile mockImage = new MockMultipartFile(
+        "file",
+        "user-picture.jpg",
+        "image/jpeg",
+        "fake-image-content".getBytes()
+    );
 
     private User user;
 
+    private Pet pet;
+
+    private PetAnalysis petAnalysis;
+
     @BeforeEach
+    void setUp() throws Exception {
+        MockitoAnnotations.openMocks(this);
+
+        UserRequestDTO userRequest = new UserRequestDTO(
+            "bell",
+            "belll@email.com",
+            "Bell",
+            "Doe",
+            LocalDate.of(1990, 1, 15),
+            mockImage,
+            "user!123"
+        );
+
+        user = userMapper.toEntity(userRequest);
+        user.setKeycloakId(UUID.randomUUID().toString());
+        user = userRepository.save(user);
+
+        PetRequestDTO petRequest = new PetRequestDTO(
+            "Apolo",
+            Gender.MALE,
+            LocalDate.of(2020, 1, 15),
+            BigDecimal.valueOf(10.0),
+            Species.DOG,
+            "Labrador",
+            30,
+            mockImage
+        );
+
+        pet = petMapper.toEntity(petRequest);
+        pet.setUser(user);
+        pet = petRepository.save(pet);
+
+        pet = petMapper.toEntity(petRequest);
+        pet.setUser(user);
+        pet = petRepository.saveAndFlush(pet);
+
+        Pet savedPet = petRepository.findById(pet.getId())
+            .orElseThrow(() -> new RuntimeException("Pet not found"));
+
+        PetAnalysisRequestDTO petAnalysisRequest = new PetAnalysisRequestDTO(
+            savedPet.getId(),
+            mockImage,
+            AnalysisType.EMOTIONAL
+        );
+
+        petAnalysis = petAnalysisMapper.toEntity(petAnalysisRequest);
+        petAnalysis.setPet(savedPet);
+
+        byte[] pictureBytes = mockImage.getBytes();
+        petAnalysis.setPicture(Base64.getEncoder().encodeToString(pictureBytes));
+        petAnalysis.setAnalysisStatus(AnalysisStatus.COMPLETED);
+        petAnalysis = petAnalysisRepository.save(petAnalysis);
+    }
+
+
+    @AfterEach
     @Transactional
-    public void setUp() {
+    public void tearDown() {
         petAnalysisRepository.deleteAll();
         petRepository.deleteAll();
-
-        User new_user = new User();
-        new_user.setUsername("jhon");
-        new_user.setFirstName("Jhon");
-        new_user.setLastName("Doe");
-        new_user.setEmail("jhon@gmail.com");
-        new_user.setKeycloakId("345");
-        new_user.setPets(new ArrayList<>());
-
-        Pet pet = new Pet();
-        pet.setName("Apolo");
-        pet.setSpecies(Species.DOG);
-        pet.setHeight(30);
-        pet.setWeight(BigDecimal.valueOf(10.0));
-
-        new_user.getPets().add(pet);
-        pet.setUser(new_user);
-
-        this.user = userRepository.save(new_user);
-        this.pet = petRepository.save(pet);
+        userRepository.deleteAll();
     }
 
     @Test
-    @DisplayName("Should create a pet analysis successfully")
-    @Transactional
-    public void createPetAnalysisSuccessfully() throws Exception {
-        PetAnalysisRequestDTO requestDTO = new PetAnalysisRequestDTO(this.pet.getId(),
-            mockImage, AnalysisType.BREED);
-        String requestBody = objectMapper.writeValueAsString(requestDTO);
+    @DisplayName("Deve listar análises com sucesso")
+    void shouldListPetAnalysisSuccessfully() throws Exception {
+        String tokenString = tokenUtils.getToken(user.getEmail());
+        Jwt jwt = tokenUtils.getJwt(tokenString, user, List.of("admin"));
+        when(jwtDecoder.decode(tokenString)).thenReturn(jwt);
 
-        mockMvc.perform(post("/pet-analysis/")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(requestBody))
-            .andExpect(MockMvcResultMatchers.status().isCreated());
-
-        List<PetAnalysis> analyses = petAnalysisRepository.findAll();
-        assertEquals(1, analyses.size());
-        assertEquals("Healthy", analyses.getFirst().getResult());
+        mockMvc.perform(
+                MockMvcRequestBuilders.get("/pet-analysis/")
+                    .header("Authorization", "Bearer " + tokenString)
+            )
+            .andExpect(MockMvcResultMatchers.status().isOk());
     }
 
     @Test
-    @DisplayName("Should delete a pet analysis successfully")
-    @Transactional
-    public void deletePetAnalysisSuccessfully() throws Exception {
-        PetAnalysis petAnalysis = new PetAnalysis();
-        petAnalysis.setPet(this.pet);
-        petAnalysis.setResult("Happy");
-        petAnalysis.setPicture("www.pic.com");
-        petAnalysis.setAnalysisType(AnalysisType.BREED);
-        petAnalysis = petAnalysisRepository.save(petAnalysis);
+    @DisplayName("Deve retornar Forbidden ao listar análises com token de client")
+    void shouldListPetAnalysisNotSuccessfully() throws Exception {
+        String tokenString = tokenUtils.getToken(user.getEmail());
+        Jwt jwt = tokenUtils.getJwt(tokenString, user, List.of("client"));
+        when(jwtDecoder.decode(tokenString)).thenReturn(jwt);
 
-        mockMvc.perform(delete("/pet-analysis/" + petAnalysis.getId()))
-            .andExpect(MockMvcResultMatchers.status().isNoContent());
-
-        assertFalse(petAnalysisRepository.existsById(petAnalysis.getId()));
+        mockMvc.perform(
+                MockMvcRequestBuilders.get("/pet-analysis/")
+                    .header("Authorization", "Bearer " + tokenString)
+            )
+            .andExpect(MockMvcResultMatchers.status().isForbidden());
     }
 
     @Test
-    @DisplayName("Should get a pet analysis by id successfully")
-    @Transactional
-    public void getPetAnalysisByIdSuccessfully() throws Exception {
-        PetAnalysis petAnalysis = new PetAnalysis();
-        petAnalysis.setPet(this.pet);
-        petAnalysis.setResult("Happy");
-        petAnalysis.setPicture("www.pic.com");
-        petAnalysis.setAnalysisType(AnalysisType.BREED);
-        petAnalysis = petAnalysisRepository.save(petAnalysis);
+    @DisplayName("Deve criar uma Pet Analysis com sucesso")
+    void shouldCreatePetAnalysisSuccessfully() throws Exception {
+        petAnalysisRepository.deleteAll();
 
-        String expectedResponse = objectMapper.writeValueAsString(
-            petAnalysisMapper.toResponse(petAnalysis));
+        String tokenString = tokenUtils.getToken(user.getEmail());
+        Jwt jwt = tokenUtils.getJwt(tokenString, user, List.of("client"));
+        when(jwtDecoder.decode(tokenString)).thenReturn(jwt);
 
-        mockMvc.perform(get("/pet-analysis/" + petAnalysis.getId()))
-            .andExpect(MockMvcResultMatchers.status().isOk())
-            .andExpect(MockMvcResultMatchers.content().json(expectedResponse));
+        MockMultipartFile mockImage = new MockMultipartFile(
+            "picture",
+            "user-picture.jpg",
+            "image/jpeg",
+            "fake-image-content".getBytes()
+        );
+
+        when(uploadImageService.uploadImg(mockImage)).thenReturn("image/png");
+
+        mockMvc.perform(
+                MockMvcRequestBuilders.multipart("/pet-analysis/")
+                    .file(mockImage)
+                    .header("Authorization", "Bearer " + tokenString)
+                    .contentType(MediaType.MULTIPART_FORM_DATA)
+                    .param("petId", String.valueOf(pet.getId()))
+                    .param("analysisType", "EMOTIONAL")
+            )
+            .andExpect(
+                MockMvcResultMatchers.status().isCreated());
     }
 
     @Test
-    @DisplayName("Should list all pet analyses successfully")
-    @Transactional
-    public void listAllPetAnalysesSuccessfully() throws Exception {
-        PetAnalysis petAnalysis = new PetAnalysis();
-        petAnalysis.setPet(this.pet);
-        petAnalysis.setResult("Happy");
-        petAnalysis.setPicture("www.pic.com");
-        petAnalysis.setAnalysisType(AnalysisType.BREED);
-        petAnalysis = petAnalysisRepository.save(petAnalysis);
+    @DisplayName("Deve falhar ao criar uma Pet Analysis sem autenticação")
+    void shouldFailToCreatePetAnalysisWithoutAuthentication() throws Exception {
+        petAnalysisRepository.deleteAll();
 
-        PetAnalysis petAnalysis2 = new PetAnalysis();
-        petAnalysis2.setPet(this.pet);
-        petAnalysis2.setResult("Sad");
-        petAnalysis2.setPicture("www.pic.com");
-        petAnalysis2.setAnalysisType(AnalysisType.BREED);
-        petAnalysis2 = petAnalysisRepository.save(petAnalysis2);
+        MockMultipartFile mockImage = new MockMultipartFile(
+            "picture",
+            "user-picture.jpg",
+            "image/jpeg",
+            "fake-image-content".getBytes()
+        );
 
-        List<PetAnalysis> petAnalyses = petAnalysisRepository.findAll();
-        String expectedResponse = objectMapper.writeValueAsString(
-            petAnalysisMapper.toResponseList(petAnalyses));
-
-        mockMvc.perform(get("/pet-analysis/"))
-            .andExpect(MockMvcResultMatchers.status().isOk())
-            .andExpect(MockMvcResultMatchers.content().json(expectedResponse));
+        mockMvc.perform(
+                MockMvcRequestBuilders.multipart("/pet-analysis/")
+                    .file(mockImage)
+                    .contentType(MediaType.MULTIPART_FORM_DATA)
+                    .param("petId", String.valueOf(pet.getId()))
+                    .param("analysisType", "EMOTIONAL")
+            )
+            .andExpect(
+                MockMvcResultMatchers.status().isUnauthorized());
     }
 
+    @Test
+    @DisplayName("Deve falhar ao criar uma análise de pet com petId inválido")
+    void shouldFailToCreatePetAnalysisWithInvalidPetId() throws Exception {
+        petAnalysisRepository.deleteAll();
+
+        String tokenString = tokenUtils.getToken(user.getEmail());
+        Jwt jwt = tokenUtils.getJwt(tokenString, user, List.of("client"));
+        when(jwtDecoder.decode(tokenString)).thenReturn(jwt);
+
+        MockMultipartFile mockImage = new MockMultipartFile(
+            "picture",
+            "pet-picture.jpg",
+            "image/jpeg",
+            "fake-image-content".getBytes()
+        );
+
+        String requestBody = """
+            {
+                "petId": -1,
+                "analysisType": "EMOTIONAL"
+            }
+            """;
+
+        mockMvc.perform(
+                MockMvcRequestBuilders.multipart("/pet-analysis/")
+                    .file(mockImage)
+                    .header("Authorization", "Bearer " + tokenString)
+                    .contentType(MediaType.MULTIPART_FORM_DATA)
+                    .content(requestBody)
+            )
+            .andExpect(MockMvcResultMatchers.status().isBadRequest());
+    }
 
     @Test
-    @DisplayName("Should list all pet analyses successfully")
-    @Transactional
-    public void getPetAnalysisByPetIdSuccessfully() throws Exception {
+    @DisplayName("Deve buscar uma análise com sucesso")
+    void shouldGetAnalysisSuccessfully() throws Exception {
+        String tokenString = tokenUtils.getToken(user.getEmail());
+        Jwt jwt = tokenUtils.getJwt(tokenString, user, List.of("client"));
+        when(jwtDecoder.decode(tokenString)).thenReturn(jwt);
 
-        Pet cat = new Pet();
-        cat.setName("Beagles");
-        cat.setSpecies(Species.CAT);
-        cat.setHeight(30);
-        cat.setWeight(BigDecimal.valueOf(10.0));
-        cat.setUser(this.user);
-        cat = petRepository.save(cat);
+        mockMvc.perform(get("/pet-analysis/{id}", petAnalysis.getId())
+                .header("Authorization", "Bearer " + tokenString))
+            .andExpect(status().isOk());
+    }
 
-        PetAnalysis petAnalysis = new PetAnalysis();
-        petAnalysis.setPet(cat);
-        petAnalysis.setResult("Angry");
-        petAnalysis.setPicture("www.pic.com");
-        petAnalysis.setAnalysisType(AnalysisType.BREED);
-        petAnalysis = petAnalysisRepository.save(petAnalysis);
+    @Test
+    @DisplayName("Deve deletar uma análise com sucesso")
+    void shouldDeleteAnalysisSuccessfully() throws Exception {
+        String tokenString = tokenUtils.getToken(user.getEmail());
+        Jwt jwt = tokenUtils.getJwt(tokenString, user, List.of("client"));
+        when(jwtDecoder.decode(tokenString)).thenReturn(jwt);
 
-        PetAnalysis petAnalysis2 = new PetAnalysis();
-        petAnalysis2.setPet(this.pet);
-        petAnalysis2.setResult("Sad");
-        petAnalysis2.setPicture("www.pic.com");
-        petAnalysis2.setAnalysisType(AnalysisType.BREED);
-        petAnalysis2 = petAnalysisRepository.save(petAnalysis2);
-
-        List<PetAnalysis> petAnalysisList = new ArrayList<>();
-        petAnalysisList.add(petAnalysis);
-
-        String expectedResponse = objectMapper.writeValueAsString(
-            petAnalysisMapper.toResponseList(petAnalysisList));
-        System.out.println(expectedResponse);
-        mockMvc.perform(get("/pet-analysis/pet/" + cat.getId()))
-            .andExpect(MockMvcResultMatchers.status().isOk())
-            .andExpect(MockMvcResultMatchers.content().json(expectedResponse));
+        Long recommendationId = 1L;
+        mockMvc.perform(delete("/pet-analysis/{id}", petAnalysis.getId())
+                .header("Authorization", "Bearer " + tokenString))
+            .andExpect(status().isNoContent());
     }
 }

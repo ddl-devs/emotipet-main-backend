@@ -3,26 +3,33 @@ package br.com.ifrn.ddldevs.pets_backend.domain;
 
 import br.com.ifrn.ddldevs.pets_backend.domain.Enums.Gender;
 import br.com.ifrn.ddldevs.pets_backend.domain.Enums.Species;
-import jakarta.persistence.*;
-
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.Table;
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-
-import java.math.BigDecimal;
-import java.time.LocalDate;
-import java.util.ArrayList;
-
-import java.util.List;
+import lombok.experimental.SuperBuilder;
 
 @Entity
 @Setter
 @Getter
 @AllArgsConstructor
 @NoArgsConstructor
+@SuperBuilder
 @Table(name = "pets")
 public class Pet extends BaseEntity {
+
     @Column(nullable = false, length = 128)
     private String name;
 
@@ -50,10 +57,10 @@ public class Pet extends BaseEntity {
     private User user;
 
     @OneToMany(mappedBy = "pet")
-    @Column(insertable=false, updatable=false)
+    @Column(insertable = false, updatable = false)
     private List<PetAnalysis> petAnalysis = new ArrayList<>();
 
     @OneToMany(mappedBy = "pet")
-    @Column(insertable=false, updatable=false)
+    @Column(insertable = false, updatable = false)
     private List<Recommendation> recommendations = new ArrayList<>();
 }

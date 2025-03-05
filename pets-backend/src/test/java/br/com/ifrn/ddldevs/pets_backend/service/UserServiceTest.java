@@ -28,7 +28,6 @@ import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validation;
 import jakarta.validation.Validator;
 import jakarta.validation.ValidatorFactory;
-import jakarta.ws.rs.NotFoundException;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -40,7 +39,6 @@ import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.context.ActiveProfiles;
@@ -393,7 +391,7 @@ public class UserServiceTest {
         user.getPets().add(pet);
         user.getPets().add(pet2);
 
-        when(userRepository.findById(any())).thenReturn(Optional.of(user));
+        when(userRepository.findByKeycloakId(any())).thenReturn(Optional.of(user));
 
         PetResponseDTO petResponse1 = new PetResponseDTO(
             pet.getId(),
