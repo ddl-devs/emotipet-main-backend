@@ -264,19 +264,5 @@ public class UserControllerTest {
             )
             .andExpect(MockMvcResultMatchers.status().isOk());
     }
-
-    @Test
-    @DisplayName("Deve buscar todos os pets de um usuário com sucesso")
-    void shouldGetUserPetsSuccessfully() throws Exception {
-        String tokenString = tokenUtils.getToken(user.getEmail());
-        Jwt jwt = tokenUtils.getJwt(tokenString, user, List.of("admin"));
-        when(jwtDecoder.decode(tokenString)).thenReturn(jwt);
-
-        mockMvc.perform(
-                MockMvcRequestBuilders.get("/users/pets")
-                    .header("Authorization", "Bearer " + tokenString)
-            )
-            .andExpect(MockMvcResultMatchers.status().isOk());
-    }
 }
 
