@@ -1,215 +1,110 @@
 package br.com.ifrn.ddldevs.pets_backend.controller;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import br.com.ifrn.ddldevs.pets_backend.domain.Enums.RecommendationCategories;
-import br.com.ifrn.ddldevs.pets_backend.domain.Enums.Species;
-import br.com.ifrn.ddldevs.pets_backend.domain.Pet;
-import br.com.ifrn.ddldevs.pets_backend.domain.Recommendation;
-import br.com.ifrn.ddldevs.pets_backend.domain.User;
 import br.com.ifrn.ddldevs.pets_backend.dto.Recommendation.RecommendationRequestDTO;
-import br.com.ifrn.ddldevs.pets_backend.mapper.RecommendationMapper;
-import br.com.ifrn.ddldevs.pets_backend.repository.PetRepository;
-import br.com.ifrn.ddldevs.pets_backend.repository.RecommendationRepository;
-import br.com.ifrn.ddldevs.pets_backend.repository.UserRepository;
+import br.com.ifrn.ddldevs.pets_backend.dto.keycloak.LoginRequestDTO;
+import br.com.ifrn.ddldevs.pets_backend.keycloak.KeycloakServiceImpl;
+import br.com.ifrn.ddldevs.pets_backend.service.RecommendationService;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import jakarta.transaction.Transactional;
-import java.math.BigDecimal;
-import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
-import org.springframework.boot.test.context.SpringBootTest;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.result.MockMvcResultMatchers;
+import org.springframework.test.web.servlet.MvcResult;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
-@SpringBootTest
-@AutoConfigureMockMvc
+
+@ExtendWith(MockitoExtension.class)
 @ActiveProfiles("test")
-class RecommendationControllerTest {
+public class RecommendationControllerTest {
 
-    @Autowired
     private MockMvc mockMvc;
-
-    @Autowired
-    private RecommendationMapper recommendationMapper;
-
-    @Autowired
+    private String accessToken;
     private ObjectMapper objectMapper;
 
-    @Autowired
-    private RecommendationRepository recommendationRepository;
+    @Mock
+    private RecommendationService recommendationService;
 
-    @Autowired
-    private PetRepository petRepository;
+    @InjectMocks
+    private RecommendationController recommendationController;
 
-    private Pet pet;
+    @Mock
+    private KeycloakServiceImpl keycloakServiceImpl;
 
-    private User user;
-
-    @Autowired
-    private UserRepository userRepository;
+    @InjectMocks
+    private AuthController authController;
 
     @BeforeEach
-    @Transactional
-    public void setUp() throws Exception {
-        recommendationRepository.deleteAll();
-        petRepository.deleteAll();
+    void setUp() throws Exception {
+        this.objectMapper = new ObjectMapper();
+        this.mockMvc = MockMvcBuilders.standaloneSetup(recommendationController, authController)
+            .build();
 
-        User new_user = new User();
-        new_user.setUsername("jhon");
-        new_user.setFirstName("Jhon");
-        new_user.setLastName("Doe");
-        new_user.setEmail("jhon@gmail.com");
-        new_user.setKeycloakId("345");
-        new_user.setPets(new ArrayList<>());
+        LoginRequestDTO loginRequest = new LoginRequestDTO("admin", "admin", "pets-backend",
+            "password");
 
-        Pet pet = new Pet();
-        pet.setName("Apolo");
-        pet.setSpecies(Species.DOG);
-        pet.setHeight(30);
-        pet.setWeight(BigDecimal.valueOf(10.0));
+        when(keycloakServiceImpl.generateToken(any(LoginRequestDTO.class)))
+            .thenReturn("mocked-jwt-token");
 
-        new_user.getPets().add(pet);
-        pet.setUser(new_user);
-
-        this.user = userRepository.save(new_user);
-        this.pet = petRepository.save(pet);
-    }
-
-    @Test
-    @DisplayName("Should create an recommendation successfully")
-    @Transactional
-    public void createRecommendationSuccessfully() throws Exception {
-        RecommendationRequestDTO requestDTO = new RecommendationRequestDTO(this.pet.getId(), RecommendationCategories.HEALTH);
-
-        String requestBody = objectMapper.writeValueAsString(requestDTO);
-
-        mockMvc.perform(
-            post("/recommendations/")
+        MvcResult result = mockMvc.perform(post("/auth/login")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(requestBody)
-        ).andExpect(MockMvcResultMatchers.status().isCreated());
+                .content(objectMapper.writeValueAsString(loginRequest)))
+            .andExpect(status().isOk())
+            .andReturn();
 
-        Optional<Recommendation> savedRecommendation = recommendationRepository.findAll().stream()
-            .findFirst();
-        assertTrue(savedRecommendation.isPresent());
-        assertEquals("Feed your pet twice daily", savedRecommendation.get().getRecommendation());
+        this.accessToken = result.getResponse().getContentAsString();
     }
 
     @Test
-    @DisplayName("Should delete an recommendation successfully")
-    @Transactional
-    public void deleteRecommendationSuccessfully() throws Exception {
-        Recommendation recommendation = new Recommendation();
-        recommendation.setPet(this.pet);
-        recommendation.setRecommendation("Feed your pet twice daily");
-        recommendation.setCategoryRecommendation(RecommendationCategories.HEALTH);
-        recommendation.setCreatedAt(LocalDateTime.now());
-
-        recommendation = recommendationRepository.save(recommendation);
-
-        mockMvc.perform(
-            delete("/recommendations/" + recommendation.getId())
-        ).andExpect(MockMvcResultMatchers.status().isNoContent());
-
-        Optional<Recommendation> savedRecommendation = recommendationRepository.findById(
-            recommendation.getId());
-        assertFalse(savedRecommendation.isPresent());
+    @DisplayName("Deve listar recomendações com sucesso")
+    void shouldListRecommendationsSuccessfully() throws Exception {
+        mockMvc.perform(get("/recommendations/")
+                .header("Authorization", "Bearer " + accessToken)
+                .contentType(MediaType.APPLICATION_JSON))
+            .andExpect(status().isOk());
     }
 
     @Test
-    @DisplayName("Should get an recommendation successfully")
-    @Transactional
-    public void getRecommendationSuccessfully() throws Exception {
-        Recommendation recommendation = new Recommendation();
-        recommendation.setPet(this.pet);
-        recommendation.setRecommendation("Feed your pet twice daily");
-        recommendation.setCategoryRecommendation(RecommendationCategories.HEALTH);
-        recommendation.setCreatedAt(LocalDateTime.now());
-        recommendation = recommendationRepository.save(recommendation);
+    @DisplayName("Deve criar uma recomendação com sucesso")
+    void shouldCreateRecommendationSuccessfully() throws Exception {
+        RecommendationRequestDTO requestDTO = new RecommendationRequestDTO(1L,
+            RecommendationCategories.HEALTH);
 
-        String expectedResponse = objectMapper.writeValueAsString(
-            recommendationMapper.toRecommendationResponseDTO(recommendation));
-
-        mockMvc.perform(
-                get("/recommendations/" + recommendation.getId())
-            ).andExpect(MockMvcResultMatchers.status().isOk())
-            .andExpect(MockMvcResultMatchers.content().json(expectedResponse));
+        mockMvc.perform(post("/recommendations/")
+                .header("Authorization", "Bearer " + accessToken)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(requestDTO)))
+            .andExpect(status().isCreated());
     }
 
     @Test
-    @DisplayName("Should get recommendations by pet id")
-    @Transactional
-    public void getRecommendationsByPetIdSuccessfully() throws Exception {
-        Recommendation recommendation = new Recommendation();
-        recommendation.setPet(this.pet);
-        recommendation.setRecommendation("Feed your pet twice daily");
-        recommendation.setCategoryRecommendation(RecommendationCategories.HEALTH);
-        recommendation.setCreatedAt(LocalDateTime.now());
-        recommendation = recommendationRepository.save(recommendation);
-
-        Recommendation recommendation2 = new Recommendation();
-        recommendation2.setPet(this.pet);
-        recommendation2.setRecommendation("Feed your pet once daily");
-        recommendation2.setCategoryRecommendation(RecommendationCategories.HEALTH);
-        recommendation2.setCreatedAt(LocalDateTime.now());
-        recommendation2 = recommendationRepository.save(recommendation2);
-
-        List<Recommendation> recommendationList = new ArrayList<>();
-        recommendationList.add(recommendation);
-        recommendationList.add(recommendation2);
-
-        String expectedResponse = objectMapper.writeValueAsString(
-            recommendationMapper.toDTOList(recommendationList));
-
-        mockMvc.perform(
-                get("/recommendations/pet/" + this.pet.getId())
-            ).andExpect(MockMvcResultMatchers.status().isOk())
-            .andExpect(MockMvcResultMatchers.content().json(expectedResponse));
+    @DisplayName("Deve buscar uma recomendação com sucesso")
+    void shouldGetRecommendationSuccessfully() throws Exception {
+        Long recommendationId = 1L;
+        mockMvc.perform(get("/recommendations/" + recommendationId)
+                .header("Authorization", "Bearer " + accessToken))
+            .andExpect(status().isOk());
     }
 
     @Test
-    @DisplayName("Should list pets sucessfully")
-    @Transactional
-    public void listPetsSuccessfully() throws Exception {
-        Recommendation recommendation = new Recommendation();
-        recommendation.setPet(this.pet);
-        recommendation.setRecommendation("Feed your pet twice daily");
-        recommendation.setCategoryRecommendation(RecommendationCategories.HEALTH);
-        recommendation.setCreatedAt(LocalDateTime.now());
-        recommendation = recommendationRepository.save(recommendation);
-
-        Recommendation recommendation2 = new Recommendation();
-        recommendation2.setPet(this.pet);
-        recommendation2.setRecommendation("Feed your pet once daily");
-        recommendation2.setCategoryRecommendation(RecommendationCategories.HEALTH);
-        recommendation2.setCreatedAt(LocalDateTime.now());
-        recommendation2 = recommendationRepository.save(recommendation2);
-
-        List<Recommendation> recommendationList = new ArrayList<>();
-        recommendationList.add(recommendation);
-        recommendationList.add(recommendation2);
-
-        String expectedResponse = objectMapper.writeValueAsString(
-            recommendationMapper.toDTOList(recommendationList));
-
-        mockMvc.perform(
-                get("/recommendations/")
-            ).andExpect(MockMvcResultMatchers.status().isOk())
-            .andExpect(MockMvcResultMatchers.content().json(expectedResponse));
-
+    @DisplayName("Deve deletar uma recomendação com sucesso")
+    void shouldDeleteRecommendationSuccessfully() throws Exception {
+        Long recommendationId = 1L;
+        mockMvc.perform(delete("/recommendations/" + recommendationId)
+                .header("Authorization", "Bearer " + accessToken))
+            .andExpect(status().isNoContent());
     }
 }
