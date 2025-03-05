@@ -16,6 +16,7 @@ import static org.mockito.Mockito.when;
 
 import br.com.ifrn.ddldevs.pets_backend.domain.Pet;
 import br.com.ifrn.ddldevs.pets_backend.domain.PetAnalysis;
+import br.com.ifrn.ddldevs.pets_backend.domain.Recommendation;
 import br.com.ifrn.ddldevs.pets_backend.domain.User;
 import br.com.ifrn.ddldevs.pets_backend.dto.PetAnalysis.PetAnalysisRequestDTO;
 import br.com.ifrn.ddldevs.pets_backend.dto.PetAnalysis.PetAnalysisResponseDTO;
@@ -25,6 +26,7 @@ import br.com.ifrn.ddldevs.pets_backend.repository.PetAnalysisRepository;
 import br.com.ifrn.ddldevs.pets_backend.repository.PetRepository;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -42,6 +44,12 @@ import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
+import org.springframework.boot.actuate.health.Health;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -341,29 +349,35 @@ class PetAnalysisServiceTest {
         analyse.setPicture("http://example.com/picture.jpg");
 
         analyses.add(analyse);
+        Pageable pageable = PageRequest.of(0, 10);
+        Page<PetAnalysis> petAnalysisPage = new PageImpl<>(analyses, pageable, analyses.size());
 
-        when(petAnalysisRepository.findAllByPetId(1L)).thenReturn(analyses);
+        when(petAnalysisRepository.findAll(any(Specification.class), any(Pageable.class))).thenReturn(petAnalysisPage);
         when(petAnalysisMapper.toResponseList(analyses)).thenReturn(new ArrayList<>());
         when(petRepository.findById(1L)).thenReturn(Optional.of(pet));
 
-        List<PetAnalysisResponseDTO> response = petAnalysisService.getAllByPetId(1L,
-            loggedUserKeycloakId);
+        Page<PetAnalysisResponseDTO> response = petAnalysisService.getAllByPetId(1L,
+            loggedUserKeycloakId, null, null, null, null, pageable);
 
         assertNotNull(response);
-        verify(petAnalysisRepository).findAllByPetId(1L);
+        verify(petAnalysisRepository).findAll(any(Specification.class), any(Pageable.class));
     }
 
     @Test
     void getPetAnalysesByPetIdWithInvalidId() {
+        Pageable pageable = PageRequest.of(0, 10);
         assertThrows(IllegalArgumentException.class,
-            () -> petAnalysisService.getAllByPetId(-1L, loggedUserKeycloakId),
+            () -> petAnalysisService.getAllByPetId(-1L, loggedUserKeycloakId, LocalDate.of(2000, 5, 10),
+                    LocalDate.of(2000, 5, 10), AnalysisType.BREED, "Happy", pageable),
             "ID não pode ser negativo");
     }
 
     @Test
     void getPetAnalysesByPetIdWithNullId() {
+        Pageable pageable = PageRequest.of(0, 10);
         assertThrows(IllegalArgumentException.class,
-            () -> petAnalysisService.getAllByPetId(null, loggedUserKeycloakId),
+            () -> petAnalysisService.getAllByPetId(null, loggedUserKeycloakId, LocalDate.of(2000, 5, 10),
+                    LocalDate.of(2000, 5, 10), AnalysisType.BREED, "Happy", pageable),
             "ID não pode ser nulo");
     }
 
@@ -383,12 +397,13 @@ class PetAnalysisServiceTest {
         pet.setHeight(30);
         pet.setWeight(BigDecimal.valueOf(10.0));
         pet.setUser(user);
-
+        Pageable pageable = PageRequest.of(0, 10);
         when(petRepository.findById(1L)).thenReturn(Optional.of(pet));
 
         assertThrows(
                 AccessDeniedException.class,
-                () -> petAnalysisService.getAllByPetId(1L, "NotOwner")
+                () -> petAnalysisService.getAllByPetId(1L, "NotOwner", LocalDate.of(2000,
+                                5, 10), LocalDate.of(2000, 5, 10), AnalysisType.BREED, "Happy", pageable)
         );
 
     }
@@ -444,8 +459,10 @@ class PetAnalysisServiceTest {
 
     @Test
     void getPetAnalysesIdWithNullId() {
+        Pageable pageable = PageRequest.of(0, 10);
         assertThrows(IllegalArgumentException.class,
-            () -> petAnalysisService.getAllByPetId(null, loggedUserKeycloakId),
+            () -> petAnalysisService.getAllByPetId(null, loggedUserKeycloakId, LocalDate.of(2000,
+                    5, 10), LocalDate.of(2000, 5, 10), AnalysisType.BREED, "Happy", pageable),
             "ID não pode ser nulo");
     }
 

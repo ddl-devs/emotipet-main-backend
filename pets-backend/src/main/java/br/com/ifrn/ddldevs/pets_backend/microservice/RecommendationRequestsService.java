@@ -15,7 +15,9 @@ import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.Period;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 
@@ -56,7 +58,13 @@ public class RecommendationRequestsService {
         requestBody.put("species", recommendation.getPet().getSpecies());
         requestBody.put("breed", recommendation.getPet().getBreed());
         requestBody.put("weight", recommendation.getPet().getWeight());
-        requestBody.put("age", recommendation.getPet().getBirthdate());
+        if(recommendation.getPet().getBirthdate() != null) {
+            LocalDate current_date = LocalDate.now();
+            Period period = Period.between(recommendation.getPet().getBirthdate(), current_date);
+            requestBody.put("age", period.getYears());
+        }else{
+            requestBody.put("age", recommendation.getPet().getBirthdate());
+        }
         requestBody.put("gender", recommendation.getPet().getGender());
         return requestBody;
     }
