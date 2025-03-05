@@ -14,7 +14,12 @@ import br.com.ifrn.ddldevs.pets_backend.repository.PetRepository;
 import br.com.ifrn.ddldevs.pets_backend.repository.RecommendationRepository;
 
 import java.util.List;
+
+import br.com.ifrn.ddldevs.pets_backend.specifications.RecommendationSpec;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -114,7 +119,7 @@ public class RecommendationService {
     }
 
     @Transactional
-    public List<RecommendationResponseDTO> getAllByPetId(Long id, String loggedUserKeycloakId) {
+    public Page<RecommendationResponseDTO> getAllByPetId(Long id, String loggedUserKeycloakId, Pageable page, String category) {
         if (id == null) {
             throw new IllegalArgumentException("ID não pode ser nulo");
         }
@@ -127,10 +132,11 @@ public class RecommendationService {
         });
 
         validatePetOwnershipOrAdmin(pet, loggedUserKeycloakId);
+        Specification<Recommendation> spec = Specification.where(RecommendationSpec.hasPetId(id))
+                .and(RecommendationSpec.hasCategory(category));
 
-        List<Recommendation> recommendations = recommendationRepository.findAllByPetId(id);
-
-        return recommendationMapper.toDTOList(recommendations);
+        Page<Recommendation> recommendations = recommendationRepository.findAll(spec, page);
+        return recommendations.map(recommendationMapper::toRecommendationResponseDTO);
     }
 
     private void validatePetOwnershipOrAdmin(Pet pet, String loggedUserKeycloakId) {
