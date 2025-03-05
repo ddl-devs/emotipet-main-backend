@@ -1,156 +1,277 @@
 package br.com.ifrn.ddldevs.pets_backend.controller;
 
 
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.when;
 
-import br.com.ifrn.ddldevs.pets_backend.dto.keycloak.LoginRequestDTO;
+import br.com.ifrn.ddldevs.pets_backend.SecurityTestConfig;
+import br.com.ifrn.ddldevs.pets_backend.domain.User;
+import br.com.ifrn.ddldevs.pets_backend.dto.User.UserRequestDTO;
+import br.com.ifrn.ddldevs.pets_backend.dto.keycloak.KcUserResponseDTO;
 import br.com.ifrn.ddldevs.pets_backend.keycloak.KeycloakServiceImpl;
 import br.com.ifrn.ddldevs.pets_backend.mapper.UserMapper;
+import br.com.ifrn.ddldevs.pets_backend.repository.UserRepository;
+import br.com.ifrn.ddldevs.pets_backend.service.UploadImageService;
 import br.com.ifrn.ddldevs.pets_backend.service.UserService;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.time.LocalDate;
+import java.util.List;
+import java.util.UUID;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.Mockito;
+import org.mockito.MockitoAnnotations;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.MvcResult;
-import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
+import org.springframework.test.web.servlet.result.MockMvcResultMatchers;
 
-@ExtendWith(MockitoExtension.class)
+@SpringBootTest
+@AutoConfigureMockMvc
+@TestPropertySource(properties = {
+    "AWS_BUCKET_NAME=emotipet-bucket"
+})
 @ActiveProfiles("test")
+@Import({SecurityTestConfig.class})
 public class UserControllerTest {
 
+    @Autowired
     private MockMvc mockMvc;
-    private String accessToken;
+
+    @Autowired
     private ObjectMapper objectMapper;
 
-    @Mock
+    @MockitoBean
     private KeycloakServiceImpl keycloakServiceImpl;
 
-    @Mock
+    @Autowired
     private UserMapper userMapper;
 
-    @Mock
+    @Autowired
     private UserService userService;
 
-    @InjectMocks
-    private UserController userController;
+    @Autowired
+    private UserRepository userRepository;
 
-    @InjectMocks
-    private AuthController authController;
+    @Autowired
+    private JwtDecoder jwtDecoder;
+
+    @Autowired
+    private TokenUtils tokenUtils;
+
+    @Autowired
+    private UploadImageService uploadImageService;
 
     @MockitoBean
     MockMultipartFile mockImage = new MockMultipartFile(
-        "picture",
-        "pet-analysis-picture.jpg",
+        "file",
+        "user-picture.jpg",
         "image/jpeg",
         "fake-image-content".getBytes()
     );
 
+    private User user;
+
     @BeforeEach
     void setUp() throws Exception {
-        this.objectMapper = new ObjectMapper();
-        this.mockMvc = MockMvcBuilders.standaloneSetup(userController, authController).build();
+        MockitoAnnotations.openMocks(this);
 
-        LoginRequestDTO loginRequest = new LoginRequestDTO("luke", "user!123", "pets-backend",
-            "password");
+        UserRequestDTO userRequest = new UserRequestDTO(
+            "1abc23",
+            "john@#@email.com",
+            "John",
+            "Doe",
+            LocalDate.of(1990, 1, 15),
+            mockImage,
+            "user!123"
+        );
 
-        MvcResult result = mockMvc.perform(post("/auth/login")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(loginRequest)))
-            .andExpect(status().isOk())
-            .andReturn();
-
-        this.accessToken = result.getResponse().getContentAsString();
+        user = userMapper.toEntity(userRequest);
+        user.setKeycloakId(UUID.randomUUID().toString());
+        user = userRepository.save(user);
     }
+
+    @AfterEach
+    public void tearDown() {
+        userRepository.deleteAll();
+    }
+
 
     @Test
     @DisplayName("Deve listar usuários com sucesso")
     void shouldListUsersSuccessfully() throws Exception {
-        mockMvc.perform(get("/users/")
-                .header("Authorization", "Bearer " + accessToken)
-                .contentType(MediaType.APPLICATION_JSON))
-            .andExpect(status().isOk());
+        String tokenString = tokenUtils.getToken(user.getEmail());
+        Jwt jwt = tokenUtils.getJwt(tokenString, user, List.of("admin"));
+        when(jwtDecoder.decode(tokenString)).thenReturn(jwt);
+
+        mockMvc.perform(
+                MockMvcRequestBuilders.get("/users/")
+                    .header("Authorization", "Bearer " + tokenString)
+            )
+            .andExpect(MockMvcResultMatchers.status().isOk());
     }
+
+    @Test
+    @DisplayName("Deve retornar Forbidden ao listar usuários com token de client")
+    void shouldListUsersNotSuccessfully() throws Exception {
+        String tokenString = tokenUtils.getToken(user.getEmail());
+        Jwt jwt = tokenUtils.getJwt(tokenString, user, List.of("client"));
+        when(jwtDecoder.decode(tokenString)).thenReturn(jwt);
+
+        mockMvc.perform(
+                MockMvcRequestBuilders.get("/users/")
+                    .header("Authorization", "Bearer " + tokenString)
+            )
+            .andExpect(MockMvcResultMatchers.status().isForbidden());
+    }
+
 
     @Test
     @DisplayName("Deve buscar usuário logado com sucesso")
     void shouldGetCurrentUserSuccessfully() throws Exception {
-        mockMvc.perform(get("/users/me")
-                .header("Authorization", "Bearer " + accessToken))
-            .andExpect(status().isOk());
+        String tokenString = tokenUtils.getToken(user.getEmail());
+        Jwt jwt = tokenUtils.getJwt(tokenString, user, List.of("admin"));
+        when(jwtDecoder.decode(tokenString)).thenReturn(jwt);
+
+        String expectedResponse = objectMapper.writeValueAsString(
+            userMapper.toResponseDTO(user)
+        );
+
+        mockMvc.perform(
+                MockMvcRequestBuilders.get("/users/me")
+                    .header("Authorization", "Bearer " + tokenString)
+            )
+            .andExpect(MockMvcResultMatchers.status().isOk())
+            .andExpect(MockMvcResultMatchers.content().string(expectedResponse));
     }
 
     @Test
     @DisplayName("Deve buscar usuário por ID com sucesso quando o usuário é admin")
     void shouldGetUserByIdSuccessfully() throws Exception {
-        Long userId = 1L;
-        mockMvc.perform(get("/users/" + userId)
-                .header("Authorization", "Bearer " + accessToken))
-            .andExpect(status().isOk());
+        String tokenString = tokenUtils.getToken(user.getEmail());
+        Jwt jwt = tokenUtils.getJwt(tokenString, user, List.of("admin"));
+        when(jwtDecoder.decode(tokenString)).thenReturn(jwt);
+
+        mockMvc.perform(
+                MockMvcRequestBuilders.get("/users/" + 1L)
+                    .header("Authorization", "Bearer " + tokenString)
+            )
+            .andExpect(MockMvcResultMatchers.status().isOk());
     }
 
     @Test
     @DisplayName("Deve criar um usuário com sucesso")
     void shouldCreateUserSuccessfully() throws Exception {
-        mockMvc.perform(multipart("/users/")
-                .file(mockImage)
-                .header("Authorization", "Bearer " + accessToken)
-                .param("username", "John Doe")
-                .param("email", "john@example.com")
-                .param("firstName", "John")
-                .param("lastName", "Doe")
-                .param("dateOfBirth", "2000-10-07")
-                .param("password", "user!123"))
-            .andExpect(status().isOk());
+        userRepository.deleteAll();
+
+        String tokenString = tokenUtils.getToken(user.getEmail());
+        Jwt jwt = tokenUtils.getJwt(tokenString, user, List.of("admin"));
+        when(jwtDecoder.decode(tokenString)).thenReturn(jwt);
+
+        MockMultipartFile mockImage = new MockMultipartFile(
+            "file",
+            "user-picture.jpg",
+            "image/jpeg",
+            "fake-image-content".getBytes()
+        );
+
+        KcUserResponseDTO kcUserResponseDTO = new KcUserResponseDTO(
+            user.getKeycloakId(),
+            user.getUsername(),
+            user.getEmail(),
+            user.getFirstName(),
+            user.getLastName()
+        );
+
+        when(keycloakServiceImpl.createUser(any())).thenReturn(kcUserResponseDTO);
+
+        mockMvc.perform(
+                MockMvcRequestBuilders.multipart("/users/")
+                    .file(mockImage) // Enviar o arquivo de imagem
+                    .header("Authorization", "Bearer " + tokenString)
+                    .contentType(MediaType.MULTIPART_FORM_DATA)
+                    .param("username", "john")
+                    .param("email", "john@example.com")
+                    .param("firstName", "John")
+                    .param("lastName", "Doe")
+                    .param("dateOfBirth", "2000-10-07")
+                    .param("password", "user!123")
+            )
+            .andExpect(MockMvcResultMatchers.status()
+                .isOk());
     }
+
 
     @Test
     @DisplayName("Deve atualizar um usuário com sucesso")
     void shouldUpdateUserSuccessfully() throws Exception {
-        Long userId = 1L;
-        mockMvc.perform(put("/users/" + userId)
-                .header("Authorization", "Bearer " + accessToken)
-                .contentType(MediaType.MULTIPART_FORM_DATA)
-                .param("name", "Updated John"))
-            .andExpect(status().isOk());
+        String tokenString = tokenUtils.getToken(user.getEmail());
+        Jwt jwt = tokenUtils.getJwt(tokenString, user, List.of("admin"));
+        when(jwtDecoder.decode(tokenString)).thenReturn(jwt);
+
+        mockMvc.perform(
+                MockMvcRequestBuilders.put("/users/{id}", user.getId())
+                    .header("Authorization", "Bearer " + tokenString)
+                    .contentType(MediaType.MULTIPART_FORM_DATA)
+                    .param("name", "John Doe")
+            )
+            .andExpect(MockMvcResultMatchers.status().isOk());
     }
 
     @Test
     @DisplayName("Deve deletar um usuário com sucesso")
     void shouldDeleteUserSuccessfully() throws Exception {
-        Long userId = 1L;
-        mockMvc.perform(delete("/users/" + userId)
-                .header("Authorization", "Bearer " + accessToken))
-            .andExpect(status().isNoContent());
+        String tokenString = tokenUtils.getToken(user.getEmail());
+        Jwt jwt = tokenUtils.getJwt(tokenString, user, List.of("admin"));
+        when(jwtDecoder.decode(tokenString)).thenReturn(jwt);
+
+        Mockito.doNothing().when(keycloakServiceImpl).deleteUser(user.getKeycloakId());
+
+        mockMvc.perform(
+                MockMvcRequestBuilders.delete("/users/{id}", user.getId())
+                    .header("Authorization", "Bearer " + tokenString)
+            )
+            .andExpect(MockMvcResultMatchers.status().isNoContent());
     }
 
     @Test
     @DisplayName("Deve buscar pets do usuário logado com sucesso")
     void shouldGetCurrentUserPetsSuccessfully() throws Exception {
-        mockMvc.perform(get("/users/my-pets")
-                .header("Authorization", "Bearer " + accessToken))
-            .andExpect(status().isOk());
+        String tokenString = tokenUtils.getToken(user.getEmail());
+        Jwt jwt = tokenUtils.getJwt(tokenString, user, List.of("admin"));
+        when(jwtDecoder.decode(tokenString)).thenReturn(jwt);
+
+        mockMvc.perform(
+                MockMvcRequestBuilders.get("/users/my-pets")
+                    .header("Authorization", "Bearer " + tokenString)
+            )
+            .andExpect(MockMvcResultMatchers.status().isOk());
     }
 
     @Test
     @DisplayName("Deve buscar todos os pets de um usuário com sucesso")
     void shouldGetUserPetsSuccessfully() throws Exception {
-        mockMvc.perform(get("/users/pets")
-                .header("Authorization", "Bearer " + accessToken))
-            .andExpect(status().isOk());
+        String tokenString = tokenUtils.getToken(user.getEmail());
+        Jwt jwt = tokenUtils.getJwt(tokenString, user, List.of("admin"));
+        when(jwtDecoder.decode(tokenString)).thenReturn(jwt);
+
+        mockMvc.perform(
+                MockMvcRequestBuilders.get("/users/pets")
+                    .header("Authorization", "Bearer " + tokenString)
+            )
+            .andExpect(MockMvcResultMatchers.status().isOk());
     }
 }
 
