@@ -5,6 +5,7 @@ import br.com.ifrn.ddldevs.pets_backend.dto.User.UserUpdateRequestDTO;
 import br.com.ifrn.ddldevs.pets_backend.dto.keycloak.KcUserResponseDTO;
 import br.com.ifrn.ddldevs.pets_backend.dto.keycloak.LoginRequestDTO;
 import br.com.ifrn.ddldevs.pets_backend.dto.keycloak.LogoutRequestDTO;
+import br.com.ifrn.ddldevs.pets_backend.dto.keycloak.RefreshTokenRequestDTO;
 import br.com.ifrn.ddldevs.pets_backend.exception.KeycloakException;
 import br.com.ifrn.ddldevs.pets_backend.exception.ResourceNotFoundException;
 import jakarta.ws.rs.core.Response;
@@ -58,13 +59,13 @@ public class KeycloakServiceImpl implements KeycloakService {
         formData.add("grant_type", "password");
 
         HttpEntity<MultiValueMap<String, String>> entity =
-                new HttpEntity<MultiValueMap<String, String>>(formData, headers);
+            new HttpEntity<MultiValueMap<String, String>>(formData, headers);
         try {
             var response = rt.exchange(
-                    serverUrl + "/realms/" + realmName + "/protocol/openid-connect/token",
-                    HttpMethod.POST,
-                    entity,
-                    String.class
+                serverUrl + "/realms/" + realmName + "/protocol/openid-connect/token",
+                HttpMethod.POST,
+                entity,
+                String.class
             );
 
             return response.getBody();
@@ -72,6 +73,35 @@ public class KeycloakServiceImpl implements KeycloakService {
             throw new KeycloakException("Dados não encontrados no Keycloak - " + e.getStatusCode());
         }
     }
+
+    @Override
+    public String refreshToken(RefreshTokenRequestDTO dto) {
+        HttpHeaders headers = new HttpHeaders();
+        RestTemplate rt = new RestTemplate();
+        headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
+
+        MultiValueMap<String, String> formData = new LinkedMultiValueMap<>();
+        formData.add("client_id", clientId);
+        formData.add("grant_type", "refresh_token");
+        formData.add("refresh_token", dto.refreshToken());
+
+        HttpEntity<MultiValueMap<String, String>> entity =
+            new HttpEntity<>(formData, headers);
+
+        try {
+            var response = rt.exchange(
+                serverUrl + "/realms/" + realmName + "/protocol/openid-connect/token",
+                HttpMethod.POST,
+                entity,
+                String.class
+            );
+
+            return response.getBody();
+        } catch (HttpClientErrorException e) {
+            throw new KeycloakException("Erro ao tentar renovar o token - " + e.getStatusCode());
+        }
+    }
+
 
     @Override
     public String logout(LogoutRequestDTO dto) {
@@ -88,7 +118,7 @@ public class KeycloakServiceImpl implements KeycloakService {
 
         try {
             var response = rt.postForEntity(
-                    serverUrl + "/realms/" + realmName + "/protocol/openid-connect/logout",
+                serverUrl + "/realms/" + realmName + "/protocol/openid-connect/logout",
                 entity,
                 String.class
             );
