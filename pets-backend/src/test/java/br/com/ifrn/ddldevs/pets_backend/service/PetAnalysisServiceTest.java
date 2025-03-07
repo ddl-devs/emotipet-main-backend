@@ -357,7 +357,7 @@ class PetAnalysisServiceTest {
         when(petRepository.findById(1L)).thenReturn(Optional.of(pet));
 
         Page<PetAnalysisResponseDTO> response = petAnalysisService.getAllByPetId(1L,
-            loggedUserKeycloakId, null, null, null, null, pageable);
+            loggedUserKeycloakId, null, null, null, null, null, pageable);
 
         assertNotNull(response);
         verify(petAnalysisRepository).findAll(any(Specification.class), any(Pageable.class));
@@ -368,7 +368,7 @@ class PetAnalysisServiceTest {
         Pageable pageable = PageRequest.of(0, 10);
         assertThrows(IllegalArgumentException.class,
             () -> petAnalysisService.getAllByPetId(-1L, loggedUserKeycloakId, LocalDate.of(2000, 5, 10),
-                    LocalDate.of(2000, 5, 10), AnalysisType.BREED, "Happy", pageable),
+                    LocalDate.of(2000, 5, 10), AnalysisType.BREED, AnalysisStatus.IN_ANALYSIS, "Happy", pageable),
             "ID não pode ser negativo");
     }
 
@@ -377,7 +377,7 @@ class PetAnalysisServiceTest {
         Pageable pageable = PageRequest.of(0, 10);
         assertThrows(IllegalArgumentException.class,
             () -> petAnalysisService.getAllByPetId(null, loggedUserKeycloakId, LocalDate.of(2000, 5, 10),
-                    LocalDate.of(2000, 5, 10), AnalysisType.BREED, "Happy", pageable),
+                    LocalDate.of(2000, 5, 10), AnalysisType.BREED, AnalysisStatus.IN_ANALYSIS, "Happy", pageable),
             "ID não pode ser nulo");
     }
 
@@ -403,7 +403,7 @@ class PetAnalysisServiceTest {
         assertThrows(
                 AccessDeniedException.class,
                 () -> petAnalysisService.getAllByPetId(1L, "NotOwner", LocalDate.of(2000,
-                                5, 10), LocalDate.of(2000, 5, 10), AnalysisType.BREED, "Happy", pageable)
+                                5, 10), LocalDate.of(2000, 5, 10), AnalysisType.BREED, AnalysisStatus.IN_ANALYSIS, "Happy", pageable)
         );
 
     }
@@ -462,7 +462,7 @@ class PetAnalysisServiceTest {
         Pageable pageable = PageRequest.of(0, 10);
         assertThrows(IllegalArgumentException.class,
             () -> petAnalysisService.getAllByPetId(null, loggedUserKeycloakId, LocalDate.of(2000,
-                    5, 10), LocalDate.of(2000, 5, 10), AnalysisType.BREED, "Happy", pageable),
+                    5, 10), LocalDate.of(2000, 5, 10), AnalysisType.BREED, AnalysisStatus.IN_ANALYSIS, "Happy", pageable),
             "ID não pode ser nulo");
     }
 

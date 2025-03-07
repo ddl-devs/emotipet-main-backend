@@ -176,7 +176,7 @@ public class RecommendationService {
                     throw new BusinessException("É necessário pelo menos a raça/espécie para criar uma " +
                             "recomendação nesta categoria");
                 }
-                if(recommendation.getPet().getWeight() == null && recommendation.getPet().getHeight() == null) {
+                if(recommendation.getPet().getWeight() == null || recommendation.getPet().getHeight() == null) {
                     throw new BusinessException("É necessário a altura e peso para calcular o IMC");
                 }
                 break;

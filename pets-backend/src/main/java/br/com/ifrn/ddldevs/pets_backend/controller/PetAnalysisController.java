@@ -1,5 +1,6 @@
 package br.com.ifrn.ddldevs.pets_backend.controller;
 
+import br.com.ifrn.ddldevs.pets_backend.domain.Enums.AnalysisStatus;
 import br.com.ifrn.ddldevs.pets_backend.domain.Enums.AnalysisType;
 import br.com.ifrn.ddldevs.pets_backend.dto.PetAnalysis.PetAnalysisRequestDTO;
 import br.com.ifrn.ddldevs.pets_backend.dto.PetAnalysis.PetAnalysisResponseDTO;
@@ -80,12 +81,13 @@ public class PetAnalysisController {
         @RequestParam(required = false) LocalDate startDate,
         @RequestParam(required = false) LocalDate endDate,
         @RequestParam(required = false) AnalysisType type,
+        @RequestParam(required = false) AnalysisStatus status,
         @RequestParam(required = false) String result,
         Pageable pageable
     ) {
         return ResponseEntity.status(HttpStatus.OK).body(
             petAnalysisService.getAllByPetId(id, userDetails.getKeycloakId(),
-                    startDate, endDate, type, result, pageable)
+                    startDate, endDate, type, status, result, pageable)
         );
     }
 }
