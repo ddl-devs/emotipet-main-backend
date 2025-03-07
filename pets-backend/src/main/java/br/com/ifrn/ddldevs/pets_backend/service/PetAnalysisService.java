@@ -120,7 +120,7 @@ public class PetAnalysisService {
     }
 
     public Page<PetAnalysisResponseDTO> getAllByPetId(Long id, String loggedUserKeycloakId,
-        LocalDate startDate, LocalDate endDate, AnalysisType type, String result,
+        LocalDate startDate, LocalDate endDate, AnalysisType type, AnalysisStatus status, String result,
         Pageable pageable) {
         if (id == null) {
             throw new IllegalArgumentException("ID não pode ser nulo");
@@ -138,7 +138,8 @@ public class PetAnalysisService {
             .and(AnalysisSpec.hasAnalysisType(type))
             .and(AnalysisSpec.hasStartDateAfter(startDate))
             .and(AnalysisSpec.hasEndDateBefore(endDate))
-            .and(AnalysisSpec.hasResultContaining(result));
+            .and(AnalysisSpec.hasResultContaining(result))
+            .and(AnalysisSpec.hasAnalysisStatus(status));
 
         Page<PetAnalysis> petAnalyses = petAnalysisRepository.findAll(spec, pageable);
 
